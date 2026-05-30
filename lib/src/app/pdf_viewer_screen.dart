@@ -1,0 +1,457 @@
+import 'dart:async';
+import 'package:flutter/material.dart';
+import 'package:flutter_markdown/flutter_markdown.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:brrk/src/app/reading_appearance.dart';
+import 'package:brrk/src/app/home_providers.dart';
+import 'package:brrk/src/rust/api/storage.dart' as storage;
+import 'package:brrk/src/rust/api/models.dart';
+
+/// PDF markdown viewer with page navigation and last-read-page tracking.
+/// Per SPEC.md §3.6: page markers, TOC, 2s debounce last-read-page save.
+class PdfViewerScreen extends ConsumerStatefulWidget {
+  final PdfDoc doc;
+
+  const PdfViewerScreen({super.key, required this.doc});
+
+  @override
+  ConsumerState<PdfViewerScreen> createState() => _PdfViewerScreenState();
+}
+
+class _PdfViewerScreenState extends ConsumerState<PdfViewerScreen> {
+  String _fullMarkdown = '';
+  bool _loading = true;
+  String? _error;
+  int _currentPage = 0;
+  late int _totalPages;
+
+  // Per-page content sections (split by <!-- page: N --> markers).
+  List<String> _pageSections = [];
+  // TOC entries: {level: int, text: String}.
+  List<_TocEntry> _tocEntries = [];
+  // Debounce timer for saving last read page.
+  Timer? _saveDebounce;
+
+  // Regex to find 1-based page markers in markdown.
+  static final _pageMarkerRegex = RegExp(r'<!-- page:\s*(\d+)\s*-->');
+  // Regex to find markdown headings.
+  static final _headingRegex = RegExp(r'^(#{1,6})\s+(.+)$', multiLine: true);
+
+  @override
+  void initState() {
+    super.initState();
+    _totalPages = widget.doc.pageCount <= 0 ? 1 : widget.doc.pageCount;
+    _loadMarkdown();
+  }
+
+  @override
+  void dispose() {
+    _saveDebounce?.cancel();
+    _saveLastReadPageImmediate();
+    super.dispose();
+  }
+
+  Future<void> _loadMarkdown() async {
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
+    try {
+      final content = await storage.getPdfMarkdown(docId: widget.doc.id);
+      final sections = _splitByPageMarkers(content);
+      final toc = _extractToc(content);
+
+      setState(() {
+        _fullMarkdown = content;
+        _pageSections = sections;
+        _tocEntries = toc;
+        _loading = false;
+        _currentPage = widget.doc.lastReadPageIndex.clamp(0, _totalPages - 1);
+      });
+    } catch (e) {
+      setState(() {
+        _error = e.toString();
+        _loading = false;
+      });
+    }
+  }
+
+  /// Splits markdown by 1-based `<!-- page: N -->` markers into sections.
+  /// Returns a list where index N = content of page (N+1).
+  List<String> _splitByPageMarkers(String markdown) {
+    // Collect page marker positions.
+    final matches = _pageMarkerRegex.allMatches(markdown).toList();
+    final sections = <String>[];
+
+    if (matches.isEmpty) {
+      // No markers — treat as single-page.
+      return [markdown.trim()];
+    }
+
+    for (int i = 0; i < matches.length; i++) {
+      final start = matches[i].end;
+      final end = i + 1 < matches.length
+          ? matches[i + 1].start
+          : markdown.length;
+      sections.add(markdown.substring(start, end).trim());
+    }
+    return sections;
+  }
+
+  /// Extracts TOC entries (level + text + page index) from markdown headings.
+  List<_TocEntry> _extractToc(String markdown) {
+    final pageMarkers = _pageMarkerRegex.allMatches(markdown).toList();
+    final entries = <_TocEntry>[];
+
+    for (final match in _headingRegex.allMatches(markdown)) {
+      final level = match.group(1)!.length;
+      final text = match.group(2)!.trim();
+      if (text.isEmpty) continue;
+
+      entries.add(
+        _TocEntry(
+          level: level,
+          text: text,
+          pageIndex: _pageIndexForOffset(match.start, pageMarkers),
+        ),
+      );
+    }
+    return entries;
+  }
+
+  /// Returns the 0-based page index for a markdown byte offset using page markers.
+  int _pageIndexForOffset(int offset, List<RegExpMatch> pageMarkers) {
+    var pageIndex = 0;
+    for (final marker in pageMarkers) {
+      if (marker.start > offset) break;
+      final pageNumber = int.tryParse(marker.group(1) ?? '');
+      if (pageNumber != null && pageNumber > 0) {
+        pageIndex = (pageNumber - 1).clamp(0, _totalPages - 1);
+      }
+    }
+    return pageIndex;
+  }
+
+  /// Schedules a debounced save of the current page (2s per SPEC.md).
+  void _scheduleLastReadPageSave() {
+    _saveDebounce?.cancel();
+    _saveDebounce = Timer(const Duration(seconds: 2), () {
+      _saveLastReadPageImmediate();
+    });
+  }
+
+  Future<void> _saveLastReadPageImmediate() async {
+    final updatedDoc = PdfDoc(
+      id: widget.doc.id,
+      title: widget.doc.title,
+      originalFileName: widget.doc.originalFileName,
+      pdfPath: widget.doc.pdfPath,
+      markdownPath: widget.doc.markdownPath,
+      ocrHash: widget.doc.ocrHash,
+      pageCount: widget.doc.pageCount,
+      lastReadPageIndex: _currentPage,
+      tags: widget.doc.tags,
+      createdAt: widget.doc.createdAt,
+      updatedAt: DateTime.now().toUtc().toIso8601String(),
+    );
+    try {
+      await storage.savePdfDoc(doc: updatedDoc);
+    } catch (_) {
+      // Silent — best effort.
+    }
+  }
+
+  void _jumpToPage(int pageIndex) {
+    setState(() {
+      _currentPage = pageIndex.clamp(0, _totalPages - 1);
+    });
+    _scheduleLastReadPageSave();
+  }
+
+  String get _currentPageContent {
+    if (_pageSections.isEmpty) return _fullMarkdown;
+    if (_currentPage < _pageSections.length) return _pageSections[_currentPage];
+    return _pageSections.isNotEmpty ? _pageSections.last : _fullMarkdown;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(widget.doc.title),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.text_fields),
+            tooltip: 'Reading appearance',
+            onPressed: () => showModalBottomSheet(
+              context: context,
+              builder: (_) => const ReadingAppearanceControls(),
+            ),
+          ),
+          if (_tocEntries.isNotEmpty)
+            IconButton(
+              icon: const Icon(Icons.list),
+              tooltip: 'Table of Contents',
+              onPressed: () => _showTocSheet(context),
+            ),
+          PopupMenuButton<String>(
+            onSelected: (value) {
+              if (value == 'delete') _confirmDeletePdf(context);
+            },
+            itemBuilder: (_) => [
+              PopupMenuItem(
+                value: 'delete',
+                child: Row(
+                  children: const [
+                    Icon(Icons.delete, color: Colors.red, size: 20),
+                    SizedBox(width: 8),
+                    Text('Delete PDF', style: TextStyle(color: Colors.red)),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          Center(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8),
+              child: Text(
+                'Page ${_currentPage + 1} / $_totalPages',
+                style: const TextStyle(fontSize: 14),
+              ),
+            ),
+          ),
+        ],
+      ),
+      body: _buildBody(),
+      bottomNavigationBar: _totalPages > 1
+          ? _PageNavigationBar(
+              currentPage: _currentPage,
+              totalPages: _totalPages,
+              onPrevious: () => _jumpToPage(_currentPage - 1),
+              onNext: () => _jumpToPage(_currentPage + 1),
+            )
+          : null,
+    );
+  }
+
+  Widget _buildBody() {
+    if (_loading) return const Center(child: CircularProgressIndicator());
+
+    if (_error != null) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(32),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(Icons.error_outline, size: 48, color: Colors.red),
+              const SizedBox(height: 16),
+              const Text(
+                'Failed to load markdown',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 8),
+              Text(_error!, textAlign: TextAlign.center),
+              const SizedBox(height: 24),
+              OutlinedButton(
+                onPressed: _loadMarkdown,
+                child: const Text('Retry'),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    final appearance = ref.watch(readingAppearanceProvider);
+    return Container(
+      color: appearance.palette.background,
+      child: Markdown(
+        data: _currentPageContent,
+        selectable: true,
+        styleSheet: MarkdownStyleSheet(
+          h1: appearance.heading1Style(),
+          h2: appearance.heading2Style(),
+          h3: appearance.heading3Style(),
+          p: appearance.paragraphStyle(),
+          blockSpacing: appearance.density.paragraphSpacing,
+          horizontalRuleDecoration: BoxDecoration(
+            border: Border(top: BorderSide(color: appearance.palette.muted)),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _confirmDeletePdf(BuildContext context) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('Delete PDF?'),
+        content: const Text(
+          'This will permanently delete this PDF, its extracted text, and OCR cache entry.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: Colors.red),
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !context.mounted) return;
+    try {
+      await storage.deletePdfDoc(docId: widget.doc.id);
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('PDF deleted')));
+      ref.read(pdfDocsProvider.notifier).refresh();
+      if (mounted) Navigator.of(context).pop();
+    } catch (e) {
+      if (!context.mounted) return;
+      final msg = switch (e) {
+        StorageError_NotInitialized() =>
+          'Result could not be saved. Check available storage and retry.',
+        StorageError_NotFound() => 'PDF not found.',
+        StorageError_IoError() =>
+          'Failed to delete PDF. Check available storage.',
+        StorageError_JsonError() =>
+          'Failed to delete PDF. Check available storage.',
+        StorageError_ValidationError() =>
+          'Failed to delete PDF. Check available storage.',
+        _ => 'Failed to delete PDF.',
+      };
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
+    }
+  }
+
+  void _showTocSheet(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      builder: (ctx) => DraggableScrollableSheet(
+        initialChildSize: 0.5,
+        minChildSize: 0.25,
+        maxChildSize: 0.85,
+        expand: false,
+        builder: (_, scrollController) => Column(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(16),
+              child: Row(
+                children: [
+                  const Text(
+                    'Table of Contents',
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  ),
+                  const Spacer(),
+                  IconButton(
+                    icon: const Icon(Icons.close),
+                    onPressed: () => Navigator.of(ctx).pop(),
+                  ),
+                ],
+              ),
+            ),
+            const Divider(height: 1),
+            Expanded(
+              child: ListView.builder(
+                controller: scrollController,
+                itemCount: _tocEntries.length,
+                itemBuilder: (context, index) {
+                  final entry = _tocEntries[index];
+                  return ListTile(
+                    contentPadding: EdgeInsets.only(
+                      left: 12.0 + (entry.level - 1) * 16.0,
+                      right: 12,
+                    ),
+                    dense: true,
+                    title: Text(
+                      entry.text,
+                      style: TextStyle(
+                        fontWeight: entry.level <= 2
+                            ? FontWeight.w600
+                            : FontWeight.normal,
+                        fontSize: entry.level <= 2 ? 15 : 14,
+                      ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    onTap: () {
+                      Navigator.of(ctx).pop();
+                      _jumpToPage(entry.pageIndex);
+                    },
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Table of contents entry parsed from markdown headings.
+class _TocEntry {
+  final int level;
+  final String text;
+  final int pageIndex;
+
+  const _TocEntry({
+    required this.level,
+    required this.text,
+    required this.pageIndex,
+  });
+}
+
+/// Bottom navigation bar for page prev/next.
+class _PageNavigationBar extends StatelessWidget {
+  final int currentPage;
+  final int totalPages;
+  final VoidCallback onPrevious;
+  final VoidCallback onNext;
+
+  const _PageNavigationBar({
+    required this.currentPage,
+    required this.totalPages,
+    required this.onPrevious,
+    required this.onNext,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: 56,
+      decoration: BoxDecoration(
+        color: Theme.of(context).cardColor,
+        border: Border(top: BorderSide(color: Colors.grey.shade300)),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+        children: [
+          IconButton(
+            onPressed: currentPage > 0 ? onPrevious : null,
+            icon: const Icon(Icons.chevron_left),
+            tooltip: 'Previous page',
+          ),
+          Text(
+            '${currentPage + 1} / $totalPages',
+            style: Theme.of(context).textTheme.titleMedium,
+          ),
+          IconButton(
+            onPressed: currentPage < totalPages - 1 ? onNext : null,
+            icon: const Icon(Icons.chevron_right),
+            tooltip: 'Next page',
+          ),
+        ],
+      ),
+    );
+  }
+}

@@ -1,0 +1,55 @@
+# Private docs / planning
+*.md
+!README.md
+
+# Local agent/runtime artifacts
+/.pi/
+/subagent-artifacts/
+
+# Release artifacts
+/release-artifacts/
+*.apk
+*.aab
+*.apks
+*.idsig
+
+# Android signing / local config
+/android/key.properties
+/android/local.properties
+/android/*.jks
+/android/*.keystore
+/android/app/debug
+/android/app/profile
+/android/app/release
+
+# Flutter/Dart/Pub
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.pub-cache/
+.pub/
+/build/
+/coverage/
+**/doc/api/
+
+# Symbolication / obfuscation
+app.*.symbols
+app.*.map.json
+
+# IDE / OS
+.idea/
+.vscode/
+*.iml
+*.ipr
+*.iws
+.DS_Store
+
+# Secrets / logs
+.env
+.env.*
+*.pem
+*.p12
+*.log
+*_log.txt
+*_crash_log.txt
+/logs/
