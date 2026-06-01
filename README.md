@@ -133,6 +133,15 @@ PDF import uses Android's file picker.
 
 ---
 
+## What's next
+
+The next beta releases are expected to add:
+
+- **Manual Markdown edit** — fix minor OCR mistakes on a per-page basis without losing the original OCR text.
+- **Vocabulary collection** — long-press a word in the reader to look up its definition (English or Japanese) and keep a personal word list across books. Uses the same Mistral API key and follows the same free-tier eligibility as OCR.
+
+---
+
 ## Feedback and bug reports
 
 Please open a GitHub Issue with:
