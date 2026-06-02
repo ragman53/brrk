@@ -6,6 +6,7 @@
 import 'api/models.dart';
 import 'api/ocr.dart';
 import 'api/storage.dart';
+import 'api/vocab.dart';
 import 'dart:async';
 import 'dart:convert';
 import 'frb_generated.dart';
@@ -66,7 +67,7 @@ class RustLib extends BaseEntrypoint<RustLibApi, RustLibApiImpl, RustLibWire> {
   String get codegenVersion => '2.12.0';
 
   @override
-  int get rustContentHash => 382476010;
+  int get rustContentHash => 1050908569;
 
   static const kDefaultExternalLibraryLoaderConfig =
       ExternalLibraryLoaderConfig(
@@ -78,6 +79,13 @@ class RustLib extends BaseEntrypoint<RustLibApi, RustLibApiImpl, RustLibWire> {
 }
 
 abstract class RustLibApi extends BaseApi {
+  Future<String> crateApiVocabReqwestChatClientChatCompletion({
+    required ReqwestChatClient that,
+    required String apiKey,
+    required String systemPrompt,
+    required String userPayload,
+  });
+
   Future<int> crateApiStorageClearOcrCache();
 
   Future<void> crateApiStorageDeleteNote({
@@ -95,6 +103,22 @@ abstract class RustLibApi extends BaseApi {
 
   Future<void> crateApiStorageDeletePdfDoc({required String docId});
 
+  Future<void> crateApiStorageDeletePdfNote({
+    required String docId,
+    required String noteId,
+  });
+
+  Future<void> crateApiStorageDeleteVocabularyEncounter({
+    required String language,
+    required String lemma,
+    required String encounterId,
+  });
+
+  Future<void> crateApiStorageDeleteVocabularyEntry({
+    required String language,
+    required String lemma,
+  });
+
   Future<PaperBooksData> crateApiStorageGetPaperBooks();
 
   Future<PdfDocsData> crateApiStorageGetPdfDocs();
@@ -105,13 +129,42 @@ abstract class RustLibApi extends BaseApi {
 
   Future<String> crateApiStorageGetPdfMarkdown({required String docId});
 
+  Future<List<PdfNote>> crateApiStorageGetPdfNotes({
+    required String docId,
+    int? pageIndex,
+  });
+
   void crateApiStorageInitApp({required String dataDir});
+
+  Future<List<VocabEntry>> crateApiStorageListVocabulary({
+    required VocabSourceFilter sourceFilter,
+  });
+
+  Future<VocabLookupResult> crateApiStorageLookupVocabulary({
+    required String apiKey,
+    required String selectedText,
+    required String pageContext,
+    int? selectionStart,
+    int? selectionEnd,
+    required VocabSource source,
+  });
+
+  Future<VocabLookupResult> crateApiVocabLookupVocabulary({
+    required String apiKey,
+    required String selectedText,
+    required String pageContext,
+    int? selectionStart,
+    int? selectionEnd,
+    required VocabSource source,
+  });
 
   Future<PaperBooksData> crateApiModelsPaperBooksDataDefault();
 
   Future<PdfDocsData> crateApiModelsPdfDocsDataDefault();
 
   Future<PdfManualMarkdownData> crateApiModelsPdfManualMarkdownDataDefault();
+
+  Future<PdfNotesData> crateApiModelsPdfNotesDataDefault();
 
   Future<OcrResult> crateApiOcrProcessImage({
     required String base64Data,
@@ -143,10 +196,23 @@ abstract class RustLibApi extends BaseApi {
 
   Future<void> crateApiStorageSavePdfDoc({required PdfDoc doc});
 
+  Future<void> crateApiStorageSavePdfNote({required PdfNote note});
+
   Future<void> crateApiStorageSavePdfPageManualMarkdown({
     required String docId,
     required int pageIndex,
     String? manualMarkdown,
+  });
+
+  Future<VocabLookupResult> crateApiStorageSaveVocabularyLookup({
+    required VocabEntry entry,
+    required VocabEncounter encounter,
+  });
+
+  Future<void> crateApiStorageUpdateVocabularyDefinition({
+    required String language,
+    required String lemma,
+    required String definition,
   });
 
   Future<void> crateApiStorageUpsertPaperPage({
@@ -154,6 +220,21 @@ abstract class RustLibApi extends BaseApi {
     required PaperPage page,
     required String updatedAt,
   });
+
+  Future<VocabData> crateApiModelsVocabDataDefault();
+
+  Future<int> crateApiModelsVocabEntryTotalLookupCount({
+    required VocabEntry that,
+  });
+
+  RustArcIncrementStrongCountFnType
+  get rust_arc_increment_strong_count_ReqwestChatClient;
+
+  RustArcDecrementStrongCountFnType
+  get rust_arc_decrement_strong_count_ReqwestChatClient;
+
+  CrossPlatformFinalizerArg
+  get rust_arc_decrement_strong_count_ReqwestChatClientPtr;
 }
 
 class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
@@ -165,6 +246,48 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   });
 
   @override
+  Future<String> crateApiVocabReqwestChatClientChatCompletion({
+    required ReqwestChatClient that,
+    required String apiKey,
+    required String systemPrompt,
+    required String userPayload,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerReqwestChatClient(
+            that,
+            serializer,
+          );
+          sse_encode_String(apiKey, serializer);
+          sse_encode_String(systemPrompt, serializer);
+          sse_encode_String(userPayload, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 1,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_String,
+          decodeErrorData: sse_decode_vocab_error,
+        ),
+        constMeta: kCrateApiVocabReqwestChatClientChatCompletionConstMeta,
+        argValues: [that, apiKey, systemPrompt, userPayload],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiVocabReqwestChatClientChatCompletionConstMeta =>
+      const TaskConstMeta(
+        debugName: "ReqwestChatClient_chat_completion",
+        argNames: ["that", "apiKey", "systemPrompt", "userPayload"],
+      );
+
+  @override
   Future<int> crateApiStorageClearOcrCache() {
     return handler.executeNormal(
       NormalTask(
@@ -173,7 +296,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 1,
+            funcId: 3,
             port: port_,
           );
         },
@@ -205,7 +328,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 2,
+            funcId: 4,
             port: port_,
           );
         },
@@ -235,7 +358,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 3,
+            funcId: 5,
             port: port_,
           );
         },
@@ -269,7 +392,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 4,
+            funcId: 6,
             port: port_,
           );
         },
@@ -300,7 +423,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 5,
+            funcId: 7,
             port: port_,
           );
         },
@@ -319,6 +442,113 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       const TaskConstMeta(debugName: "delete_pdf_doc", argNames: ["docId"]);
 
   @override
+  Future<void> crateApiStorageDeletePdfNote({
+    required String docId,
+    required String noteId,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_String(docId, serializer);
+          sse_encode_String(noteId, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 8,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_unit,
+          decodeErrorData: sse_decode_storage_error,
+        ),
+        constMeta: kCrateApiStorageDeletePdfNoteConstMeta,
+        argValues: [docId, noteId],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiStorageDeletePdfNoteConstMeta =>
+      const TaskConstMeta(
+        debugName: "delete_pdf_note",
+        argNames: ["docId", "noteId"],
+      );
+
+  @override
+  Future<void> crateApiStorageDeleteVocabularyEncounter({
+    required String language,
+    required String lemma,
+    required String encounterId,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_String(language, serializer);
+          sse_encode_String(lemma, serializer);
+          sse_encode_String(encounterId, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 9,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_unit,
+          decodeErrorData: sse_decode_storage_error,
+        ),
+        constMeta: kCrateApiStorageDeleteVocabularyEncounterConstMeta,
+        argValues: [language, lemma, encounterId],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiStorageDeleteVocabularyEncounterConstMeta =>
+      const TaskConstMeta(
+        debugName: "delete_vocabulary_encounter",
+        argNames: ["language", "lemma", "encounterId"],
+      );
+
+  @override
+  Future<void> crateApiStorageDeleteVocabularyEntry({
+    required String language,
+    required String lemma,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_String(language, serializer);
+          sse_encode_String(lemma, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 10,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_unit,
+          decodeErrorData: sse_decode_storage_error,
+        ),
+        constMeta: kCrateApiStorageDeleteVocabularyEntryConstMeta,
+        argValues: [language, lemma],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiStorageDeleteVocabularyEntryConstMeta =>
+      const TaskConstMeta(
+        debugName: "delete_vocabulary_entry",
+        argNames: ["language", "lemma"],
+      );
+
+  @override
   Future<PaperBooksData> crateApiStorageGetPaperBooks() {
     return handler.executeNormal(
       NormalTask(
@@ -327,7 +557,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 6,
+            funcId: 11,
             port: port_,
           );
         },
@@ -354,7 +584,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 7,
+            funcId: 12,
             port: port_,
           );
         },
@@ -384,7 +614,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 8,
+            funcId: 13,
             port: port_,
           );
         },
@@ -415,7 +645,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 9,
+            funcId: 14,
             port: port_,
           );
         },
@@ -434,13 +664,47 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       const TaskConstMeta(debugName: "get_pdf_markdown", argNames: ["docId"]);
 
   @override
+  Future<List<PdfNote>> crateApiStorageGetPdfNotes({
+    required String docId,
+    int? pageIndex,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_String(docId, serializer);
+          sse_encode_opt_box_autoadd_i_32(pageIndex, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 15,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_list_pdf_note,
+          decodeErrorData: sse_decode_storage_error,
+        ),
+        constMeta: kCrateApiStorageGetPdfNotesConstMeta,
+        argValues: [docId, pageIndex],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiStorageGetPdfNotesConstMeta => const TaskConstMeta(
+    debugName: "get_pdf_notes",
+    argNames: ["docId", "pageIndex"],
+  );
+
+  @override
   void crateApiStorageInitApp({required String dataDir}) {
     return handler.executeSync(
       SyncTask(
         callFfi: () {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(dataDir, serializer);
-          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 10)!;
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 16)!;
         },
         codec: SseCodec(
           decodeSuccessData: sse_decode_unit,
@@ -457,6 +721,153 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       const TaskConstMeta(debugName: "init_app", argNames: ["dataDir"]);
 
   @override
+  Future<List<VocabEntry>> crateApiStorageListVocabulary({
+    required VocabSourceFilter sourceFilter,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_box_autoadd_vocab_source_filter(sourceFilter, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 17,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_list_vocab_entry,
+          decodeErrorData: sse_decode_storage_error,
+        ),
+        constMeta: kCrateApiStorageListVocabularyConstMeta,
+        argValues: [sourceFilter],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiStorageListVocabularyConstMeta =>
+      const TaskConstMeta(
+        debugName: "list_vocabulary",
+        argNames: ["sourceFilter"],
+      );
+
+  @override
+  Future<VocabLookupResult> crateApiStorageLookupVocabulary({
+    required String apiKey,
+    required String selectedText,
+    required String pageContext,
+    int? selectionStart,
+    int? selectionEnd,
+    required VocabSource source,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_String(apiKey, serializer);
+          sse_encode_String(selectedText, serializer);
+          sse_encode_String(pageContext, serializer);
+          sse_encode_opt_box_autoadd_i_32(selectionStart, serializer);
+          sse_encode_opt_box_autoadd_i_32(selectionEnd, serializer);
+          sse_encode_box_autoadd_vocab_source(source, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 18,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_vocab_lookup_result,
+          decodeErrorData: sse_decode_vocab_error,
+        ),
+        constMeta: kCrateApiStorageLookupVocabularyConstMeta,
+        argValues: [
+          apiKey,
+          selectedText,
+          pageContext,
+          selectionStart,
+          selectionEnd,
+          source,
+        ],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiStorageLookupVocabularyConstMeta =>
+      const TaskConstMeta(
+        debugName: "lookup_vocabulary",
+        argNames: [
+          "apiKey",
+          "selectedText",
+          "pageContext",
+          "selectionStart",
+          "selectionEnd",
+          "source",
+        ],
+      );
+
+  @override
+  Future<VocabLookupResult> crateApiVocabLookupVocabulary({
+    required String apiKey,
+    required String selectedText,
+    required String pageContext,
+    int? selectionStart,
+    int? selectionEnd,
+    required VocabSource source,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_String(apiKey, serializer);
+          sse_encode_String(selectedText, serializer);
+          sse_encode_String(pageContext, serializer);
+          sse_encode_opt_box_autoadd_i_32(selectionStart, serializer);
+          sse_encode_opt_box_autoadd_i_32(selectionEnd, serializer);
+          sse_encode_box_autoadd_vocab_source(source, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 19,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_vocab_lookup_result,
+          decodeErrorData: sse_decode_vocab_error,
+        ),
+        constMeta: kCrateApiVocabLookupVocabularyConstMeta,
+        argValues: [
+          apiKey,
+          selectedText,
+          pageContext,
+          selectionStart,
+          selectionEnd,
+          source,
+        ],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiVocabLookupVocabularyConstMeta =>
+      const TaskConstMeta(
+        debugName: "lookup_vocabulary",
+        argNames: [
+          "apiKey",
+          "selectedText",
+          "pageContext",
+          "selectionStart",
+          "selectionEnd",
+          "source",
+        ],
+      );
+
+  @override
   Future<PaperBooksData> crateApiModelsPaperBooksDataDefault() {
     return handler.executeNormal(
       NormalTask(
@@ -465,7 +876,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 11,
+            funcId: 20,
             port: port_,
           );
         },
@@ -492,7 +903,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 12,
+            funcId: 21,
             port: port_,
           );
         },
@@ -519,7 +930,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 13,
+            funcId: 22,
             port: port_,
           );
         },
@@ -541,6 +952,33 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       );
 
   @override
+  Future<PdfNotesData> crateApiModelsPdfNotesDataDefault() {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 23,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_pdf_notes_data,
+          decodeErrorData: null,
+        ),
+        constMeta: kCrateApiModelsPdfNotesDataDefaultConstMeta,
+        argValues: [],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiModelsPdfNotesDataDefaultConstMeta =>
+      const TaskConstMeta(debugName: "pdf_notes_data_default", argNames: []);
+
+  @override
   Future<OcrResult> crateApiOcrProcessImage({
     required String base64Data,
     required String fileName,
@@ -558,7 +996,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 14,
+            funcId: 24,
             port: port_,
           );
         },
@@ -596,7 +1034,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 15,
+            funcId: 25,
             port: port_,
           );
         },
@@ -630,7 +1068,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 16,
+            funcId: 26,
             port: port_,
           );
         },
@@ -658,7 +1096,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 17,
+            funcId: 27,
             port: port_,
           );
         },
@@ -694,7 +1132,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 18,
+            funcId: 28,
             port: port_,
           );
         },
@@ -725,7 +1163,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 19,
+            funcId: 29,
             port: port_,
           );
         },
@@ -744,6 +1182,34 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       const TaskConstMeta(debugName: "save_pdf_doc", argNames: ["doc"]);
 
   @override
+  Future<void> crateApiStorageSavePdfNote({required PdfNote note}) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_box_autoadd_pdf_note(note, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 30,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_unit,
+          decodeErrorData: sse_decode_storage_error,
+        ),
+        constMeta: kCrateApiStorageSavePdfNoteConstMeta,
+        argValues: [note],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiStorageSavePdfNoteConstMeta =>
+      const TaskConstMeta(debugName: "save_pdf_note", argNames: ["note"]);
+
+  @override
   Future<void> crateApiStorageSavePdfPageManualMarkdown({
     required String docId,
     required int pageIndex,
@@ -759,7 +1225,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 20,
+            funcId: 31,
             port: port_,
           );
         },
@@ -781,6 +1247,78 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       );
 
   @override
+  Future<VocabLookupResult> crateApiStorageSaveVocabularyLookup({
+    required VocabEntry entry,
+    required VocabEncounter encounter,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_box_autoadd_vocab_entry(entry, serializer);
+          sse_encode_box_autoadd_vocab_encounter(encounter, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 32,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_vocab_lookup_result,
+          decodeErrorData: sse_decode_storage_error,
+        ),
+        constMeta: kCrateApiStorageSaveVocabularyLookupConstMeta,
+        argValues: [entry, encounter],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiStorageSaveVocabularyLookupConstMeta =>
+      const TaskConstMeta(
+        debugName: "save_vocabulary_lookup",
+        argNames: ["entry", "encounter"],
+      );
+
+  @override
+  Future<void> crateApiStorageUpdateVocabularyDefinition({
+    required String language,
+    required String lemma,
+    required String definition,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_String(language, serializer);
+          sse_encode_String(lemma, serializer);
+          sse_encode_String(definition, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 33,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_unit,
+          decodeErrorData: sse_decode_storage_error,
+        ),
+        constMeta: kCrateApiStorageUpdateVocabularyDefinitionConstMeta,
+        argValues: [language, lemma, definition],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiStorageUpdateVocabularyDefinitionConstMeta =>
+      const TaskConstMeta(
+        debugName: "update_vocabulary_definition",
+        argNames: ["language", "lemma", "definition"],
+      );
+
+  @override
   Future<void> crateApiStorageUpsertPaperPage({
     required String bookId,
     required PaperPage page,
@@ -796,7 +1334,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 21,
+            funcId: 34,
             port: port_,
           );
         },
@@ -817,6 +1355,92 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
         argNames: ["bookId", "page", "updatedAt"],
       );
 
+  @override
+  Future<VocabData> crateApiModelsVocabDataDefault() {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 35,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_vocab_data,
+          decodeErrorData: null,
+        ),
+        constMeta: kCrateApiModelsVocabDataDefaultConstMeta,
+        argValues: [],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiModelsVocabDataDefaultConstMeta =>
+      const TaskConstMeta(debugName: "vocab_data_default", argNames: []);
+
+  @override
+  Future<int> crateApiModelsVocabEntryTotalLookupCount({
+    required VocabEntry that,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_box_autoadd_vocab_entry(that, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 36,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_u_32,
+          decodeErrorData: null,
+        ),
+        constMeta: kCrateApiModelsVocabEntryTotalLookupCountConstMeta,
+        argValues: [that],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiModelsVocabEntryTotalLookupCountConstMeta =>
+      const TaskConstMeta(
+        debugName: "vocab_entry_total_lookup_count",
+        argNames: ["that"],
+      );
+
+  RustArcIncrementStrongCountFnType
+  get rust_arc_increment_strong_count_ReqwestChatClient => wire
+      .rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerReqwestChatClient;
+
+  RustArcDecrementStrongCountFnType
+  get rust_arc_decrement_strong_count_ReqwestChatClient => wire
+      .rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerReqwestChatClient;
+
+  @protected
+  ReqwestChatClient
+  dco_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerReqwestChatClient(
+    dynamic raw,
+  ) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return ReqwestChatClientImpl.frbInternalDcoDecode(raw as List<dynamic>);
+  }
+
+  @protected
+  ReqwestChatClient
+  dco_decode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerReqwestChatClient(
+    dynamic raw,
+  ) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return ReqwestChatClientImpl.frbInternalDcoDecode(raw as List<dynamic>);
+  }
+
   @protected
   Map<String, String> dco_decode_Map_String_String_None(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
@@ -828,9 +1452,24 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  ReqwestChatClient
+  dco_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerReqwestChatClient(
+    dynamic raw,
+  ) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return ReqwestChatClientImpl.frbInternalDcoDecode(raw as List<dynamic>);
+  }
+
+  @protected
   String dco_decode_String(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     return raw as String;
+  }
+
+  @protected
+  MistralChatClient dco_decode_TraitDef_MistralChatClient(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    throw UnimplementedError();
   }
 
   @protected
@@ -867,6 +1506,36 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   PdfDoc dco_decode_box_autoadd_pdf_doc(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     return dco_decode_pdf_doc(raw);
+  }
+
+  @protected
+  PdfNote dco_decode_box_autoadd_pdf_note(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return dco_decode_pdf_note(raw);
+  }
+
+  @protected
+  VocabEncounter dco_decode_box_autoadd_vocab_encounter(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return dco_decode_vocab_encounter(raw);
+  }
+
+  @protected
+  VocabEntry dco_decode_box_autoadd_vocab_entry(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return dco_decode_vocab_entry(raw);
+  }
+
+  @protected
+  VocabSource dco_decode_box_autoadd_vocab_source(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return dco_decode_vocab_source(raw);
+  }
+
+  @protected
+  VocabSourceFilter dco_decode_box_autoadd_vocab_source_filter(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return dco_decode_vocab_source_filter(raw);
   }
 
   @protected
@@ -912,6 +1581,12 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  List<PdfNote> dco_decode_list_pdf_note(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return (raw as List<dynamic>).map(dco_decode_pdf_note).toList();
+  }
+
+  @protected
   Uint8List dco_decode_list_prim_u_8_strict(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     return raw as Uint8List;
@@ -921,6 +1596,18 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   List<(String, String)> dco_decode_list_record_string_string(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     return (raw as List<dynamic>).map(dco_decode_record_string_string).toList();
+  }
+
+  @protected
+  List<VocabEncounter> dco_decode_list_vocab_encounter(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return (raw as List<dynamic>).map(dco_decode_vocab_encounter).toList();
+  }
+
+  @protected
+  List<VocabEntry> dco_decode_list_vocab_entry(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return (raw as List<dynamic>).map(dco_decode_vocab_entry).toList();
   }
 
   @protected
@@ -1096,6 +1783,37 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  PdfNote dco_decode_pdf_note(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 9)
+      throw Exception('unexpected arr length: expect 9 but see ${arr.length}');
+    return PdfNote(
+      id: dco_decode_String(arr[0]),
+      docId: dco_decode_String(arr[1]),
+      pageIndex: dco_decode_i_32(arr[2]),
+      selectedText: dco_decode_String(arr[3]),
+      selectedSentence: dco_decode_String(arr[4]),
+      content: dco_decode_String(arr[5]),
+      tags: dco_decode_list_String(arr[6]),
+      createdAt: dco_decode_String(arr[7]),
+      updatedAt: dco_decode_String(arr[8]),
+    );
+  }
+
+  @protected
+  PdfNotesData dco_decode_pdf_notes_data(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 2)
+      throw Exception('unexpected arr length: expect 2 but see ${arr.length}');
+    return PdfNotesData(
+      version: dco_decode_u_32(arr[0]),
+      notes: dco_decode_list_pdf_note(arr[1]),
+    );
+  }
+
+  @protected
   (String, String) dco_decode_record_string_string(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     final arr = raw as List<dynamic>;
@@ -1143,12 +1861,173 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  BigInt dco_decode_usize(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return dcoDecodeU64(raw);
+  }
+
+  @protected
+  VocabData dco_decode_vocab_data(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 2)
+      throw Exception('unexpected arr length: expect 2 but see ${arr.length}');
+    return VocabData(
+      version: dco_decode_u_32(arr[0]),
+      entries: dco_decode_list_vocab_entry(arr[1]),
+    );
+  }
+
+  @protected
+  VocabEncounter dco_decode_vocab_encounter(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 7)
+      throw Exception('unexpected arr length: expect 7 but see ${arr.length}');
+    return VocabEncounter(
+      id: dco_decode_String(arr[0]),
+      selectedText: dco_decode_String(arr[1]),
+      sentence: dco_decode_String(arr[2]),
+      source: dco_decode_vocab_source(arr[3]),
+      lookupCount: dco_decode_u_32(arr[4]),
+      firstSeen: dco_decode_String(arr[5]),
+      lastSeen: dco_decode_String(arr[6]),
+    );
+  }
+
+  @protected
+  VocabEntry dco_decode_vocab_entry(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 8)
+      throw Exception('unexpected arr length: expect 8 but see ${arr.length}');
+    return VocabEntry(
+      lemma: dco_decode_String(arr[0]),
+      language: dco_decode_String(arr[1]),
+      surfaceForms: dco_decode_list_String(arr[2]),
+      definition: dco_decode_String(arr[3]),
+      definitionEdited: dco_decode_bool(arr[4]),
+      encounters: dco_decode_list_vocab_encounter(arr[5]),
+      createdAt: dco_decode_String(arr[6]),
+      updatedAt: dco_decode_String(arr[7]),
+    );
+  }
+
+  @protected
+  VocabError dco_decode_vocab_error(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    switch (raw[0]) {
+      case 0:
+        return VocabError_NetworkError(dco_decode_String(raw[1]));
+      case 1:
+        return VocabError_TimeoutError();
+      case 2:
+        return VocabError_ApiKeyError();
+      case 3:
+        return VocabError_RateLimitError();
+      case 4:
+        return VocabError_InvalidSelection(dco_decode_String(raw[1]));
+      case 5:
+        return VocabError_ParseError(dco_decode_String(raw[1]));
+      case 6:
+        return VocabError_StorageError(dco_decode_String(raw[1]));
+      case 7:
+        return VocabError_UnknownError(dco_decode_String(raw[1]));
+      default:
+        throw Exception("unreachable");
+    }
+  }
+
+  @protected
+  VocabLookupResult dco_decode_vocab_lookup_result(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 3)
+      throw Exception('unexpected arr length: expect 3 but see ${arr.length}');
+    return VocabLookupResult(
+      entry: dco_decode_vocab_entry(arr[0]),
+      encounterId: dco_decode_String(arr[1]),
+      cacheHit: dco_decode_bool(arr[2]),
+    );
+  }
+
+  @protected
+  VocabSource dco_decode_vocab_source(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    switch (raw[0]) {
+      case 0:
+        return VocabSource_Paper(
+          bookId: dco_decode_String(raw[1]),
+          pageId: dco_decode_String(raw[2]),
+        );
+      case 1:
+        return VocabSource_Pdf(
+          docId: dco_decode_String(raw[1]),
+          pageIndex: dco_decode_i_32(raw[2]),
+        );
+      default:
+        throw Exception("unreachable");
+    }
+  }
+
+  @protected
+  VocabSourceFilter dco_decode_vocab_source_filter(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    switch (raw[0]) {
+      case 0:
+        return VocabSourceFilter_PaperBook(bookId: dco_decode_String(raw[1]));
+      case 1:
+        return VocabSourceFilter_PdfDoc(docId: dco_decode_String(raw[1]));
+      case 2:
+        return VocabSourceFilter_All();
+      default:
+        throw Exception("unreachable");
+    }
+  }
+
+  @protected
+  ReqwestChatClient
+  sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerReqwestChatClient(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return ReqwestChatClientImpl.frbInternalSseDecode(
+      sse_decode_usize(deserializer),
+      sse_decode_i_32(deserializer),
+    );
+  }
+
+  @protected
+  ReqwestChatClient
+  sse_decode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerReqwestChatClient(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return ReqwestChatClientImpl.frbInternalSseDecode(
+      sse_decode_usize(deserializer),
+      sse_decode_i_32(deserializer),
+    );
+  }
+
+  @protected
   Map<String, String> sse_decode_Map_String_String_None(
     SseDeserializer deserializer,
   ) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     var inner = sse_decode_list_record_string_string(deserializer);
     return Map.fromEntries(inner.map((e) => MapEntry(e.$1, e.$2)));
+  }
+
+  @protected
+  ReqwestChatClient
+  sse_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerReqwestChatClient(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return ReqwestChatClientImpl.frbInternalSseDecode(
+      sse_decode_usize(deserializer),
+      sse_decode_i_32(deserializer),
+    );
   }
 
   @protected
@@ -1192,6 +2071,42 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   PdfDoc sse_decode_box_autoadd_pdf_doc(SseDeserializer deserializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     return (sse_decode_pdf_doc(deserializer));
+  }
+
+  @protected
+  PdfNote sse_decode_box_autoadd_pdf_note(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return (sse_decode_pdf_note(deserializer));
+  }
+
+  @protected
+  VocabEncounter sse_decode_box_autoadd_vocab_encounter(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return (sse_decode_vocab_encounter(deserializer));
+  }
+
+  @protected
+  VocabEntry sse_decode_box_autoadd_vocab_entry(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return (sse_decode_vocab_entry(deserializer));
+  }
+
+  @protected
+  VocabSource sse_decode_box_autoadd_vocab_source(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return (sse_decode_vocab_source(deserializer));
+  }
+
+  @protected
+  VocabSourceFilter sse_decode_box_autoadd_vocab_source_filter(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return (sse_decode_vocab_source_filter(deserializer));
   }
 
   @protected
@@ -1273,6 +2188,18 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  List<PdfNote> sse_decode_list_pdf_note(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    var len_ = sse_decode_i_32(deserializer);
+    var ans_ = <PdfNote>[];
+    for (var idx_ = 0; idx_ < len_; ++idx_) {
+      ans_.add(sse_decode_pdf_note(deserializer));
+    }
+    return ans_;
+  }
+
+  @protected
   Uint8List sse_decode_list_prim_u_8_strict(SseDeserializer deserializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     var len_ = sse_decode_i_32(deserializer);
@@ -1289,6 +2216,32 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     var ans_ = <(String, String)>[];
     for (var idx_ = 0; idx_ < len_; ++idx_) {
       ans_.add(sse_decode_record_string_string(deserializer));
+    }
+    return ans_;
+  }
+
+  @protected
+  List<VocabEncounter> sse_decode_list_vocab_encounter(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    var len_ = sse_decode_i_32(deserializer);
+    var ans_ = <VocabEncounter>[];
+    for (var idx_ = 0; idx_ < len_; ++idx_) {
+      ans_.add(sse_decode_vocab_encounter(deserializer));
+    }
+    return ans_;
+  }
+
+  @protected
+  List<VocabEntry> sse_decode_list_vocab_entry(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    var len_ = sse_decode_i_32(deserializer);
+    var ans_ = <VocabEntry>[];
+    for (var idx_ = 0; idx_ < len_; ++idx_) {
+      ans_.add(sse_decode_vocab_entry(deserializer));
     }
     return ans_;
   }
@@ -1490,6 +2443,39 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  PdfNote sse_decode_pdf_note(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_id = sse_decode_String(deserializer);
+    var var_docId = sse_decode_String(deserializer);
+    var var_pageIndex = sse_decode_i_32(deserializer);
+    var var_selectedText = sse_decode_String(deserializer);
+    var var_selectedSentence = sse_decode_String(deserializer);
+    var var_content = sse_decode_String(deserializer);
+    var var_tags = sse_decode_list_String(deserializer);
+    var var_createdAt = sse_decode_String(deserializer);
+    var var_updatedAt = sse_decode_String(deserializer);
+    return PdfNote(
+      id: var_id,
+      docId: var_docId,
+      pageIndex: var_pageIndex,
+      selectedText: var_selectedText,
+      selectedSentence: var_selectedSentence,
+      content: var_content,
+      tags: var_tags,
+      createdAt: var_createdAt,
+      updatedAt: var_updatedAt,
+    );
+  }
+
+  @protected
+  PdfNotesData sse_decode_pdf_notes_data(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_version = sse_decode_u_32(deserializer);
+    var var_notes = sse_decode_list_pdf_note(deserializer);
+    return PdfNotesData(version: var_version, notes: var_notes);
+  }
+
+  @protected
   (String, String) sse_decode_record_string_string(
     SseDeserializer deserializer,
   ) {
@@ -1542,6 +2528,177 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  BigInt sse_decode_usize(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return deserializer.buffer.getBigUint64();
+  }
+
+  @protected
+  VocabData sse_decode_vocab_data(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_version = sse_decode_u_32(deserializer);
+    var var_entries = sse_decode_list_vocab_entry(deserializer);
+    return VocabData(version: var_version, entries: var_entries);
+  }
+
+  @protected
+  VocabEncounter sse_decode_vocab_encounter(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_id = sse_decode_String(deserializer);
+    var var_selectedText = sse_decode_String(deserializer);
+    var var_sentence = sse_decode_String(deserializer);
+    var var_source = sse_decode_vocab_source(deserializer);
+    var var_lookupCount = sse_decode_u_32(deserializer);
+    var var_firstSeen = sse_decode_String(deserializer);
+    var var_lastSeen = sse_decode_String(deserializer);
+    return VocabEncounter(
+      id: var_id,
+      selectedText: var_selectedText,
+      sentence: var_sentence,
+      source: var_source,
+      lookupCount: var_lookupCount,
+      firstSeen: var_firstSeen,
+      lastSeen: var_lastSeen,
+    );
+  }
+
+  @protected
+  VocabEntry sse_decode_vocab_entry(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_lemma = sse_decode_String(deserializer);
+    var var_language = sse_decode_String(deserializer);
+    var var_surfaceForms = sse_decode_list_String(deserializer);
+    var var_definition = sse_decode_String(deserializer);
+    var var_definitionEdited = sse_decode_bool(deserializer);
+    var var_encounters = sse_decode_list_vocab_encounter(deserializer);
+    var var_createdAt = sse_decode_String(deserializer);
+    var var_updatedAt = sse_decode_String(deserializer);
+    return VocabEntry(
+      lemma: var_lemma,
+      language: var_language,
+      surfaceForms: var_surfaceForms,
+      definition: var_definition,
+      definitionEdited: var_definitionEdited,
+      encounters: var_encounters,
+      createdAt: var_createdAt,
+      updatedAt: var_updatedAt,
+    );
+  }
+
+  @protected
+  VocabError sse_decode_vocab_error(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    var tag_ = sse_decode_i_32(deserializer);
+    switch (tag_) {
+      case 0:
+        var var_field0 = sse_decode_String(deserializer);
+        return VocabError_NetworkError(var_field0);
+      case 1:
+        return VocabError_TimeoutError();
+      case 2:
+        return VocabError_ApiKeyError();
+      case 3:
+        return VocabError_RateLimitError();
+      case 4:
+        var var_field0 = sse_decode_String(deserializer);
+        return VocabError_InvalidSelection(var_field0);
+      case 5:
+        var var_field0 = sse_decode_String(deserializer);
+        return VocabError_ParseError(var_field0);
+      case 6:
+        var var_field0 = sse_decode_String(deserializer);
+        return VocabError_StorageError(var_field0);
+      case 7:
+        var var_field0 = sse_decode_String(deserializer);
+        return VocabError_UnknownError(var_field0);
+      default:
+        throw UnimplementedError('');
+    }
+  }
+
+  @protected
+  VocabLookupResult sse_decode_vocab_lookup_result(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_entry = sse_decode_vocab_entry(deserializer);
+    var var_encounterId = sse_decode_String(deserializer);
+    var var_cacheHit = sse_decode_bool(deserializer);
+    return VocabLookupResult(
+      entry: var_entry,
+      encounterId: var_encounterId,
+      cacheHit: var_cacheHit,
+    );
+  }
+
+  @protected
+  VocabSource sse_decode_vocab_source(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    var tag_ = sse_decode_i_32(deserializer);
+    switch (tag_) {
+      case 0:
+        var var_bookId = sse_decode_String(deserializer);
+        var var_pageId = sse_decode_String(deserializer);
+        return VocabSource_Paper(bookId: var_bookId, pageId: var_pageId);
+      case 1:
+        var var_docId = sse_decode_String(deserializer);
+        var var_pageIndex = sse_decode_i_32(deserializer);
+        return VocabSource_Pdf(docId: var_docId, pageIndex: var_pageIndex);
+      default:
+        throw UnimplementedError('');
+    }
+  }
+
+  @protected
+  VocabSourceFilter sse_decode_vocab_source_filter(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    var tag_ = sse_decode_i_32(deserializer);
+    switch (tag_) {
+      case 0:
+        var var_bookId = sse_decode_String(deserializer);
+        return VocabSourceFilter_PaperBook(bookId: var_bookId);
+      case 1:
+        var var_docId = sse_decode_String(deserializer);
+        return VocabSourceFilter_PdfDoc(docId: var_docId);
+      case 2:
+        return VocabSourceFilter_All();
+      default:
+        throw UnimplementedError('');
+    }
+  }
+
+  @protected
+  void
+  sse_encode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerReqwestChatClient(
+    ReqwestChatClient self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_usize(
+      (self as ReqwestChatClientImpl).frbInternalSseEncode(move: true),
+      serializer,
+    );
+  }
+
+  @protected
+  void
+  sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerReqwestChatClient(
+    ReqwestChatClient self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_usize(
+      (self as ReqwestChatClientImpl).frbInternalSseEncode(move: false),
+      serializer,
+    );
+  }
+
+  @protected
   void sse_encode_Map_String_String_None(
     Map<String, String> self,
     SseSerializer serializer,
@@ -1549,6 +2706,19 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     // Codec=Sse (Serialization based), see doc to use other codecs
     sse_encode_list_record_string_string(
       self.entries.map((e) => (e.key, e.value)).toList(),
+      serializer,
+    );
+  }
+
+  @protected
+  void
+  sse_encode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerReqwestChatClient(
+    ReqwestChatClient self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_usize(
+      (self as ReqwestChatClientImpl).frbInternalSseEncode(move: null),
       serializer,
     );
   }
@@ -1599,6 +2769,48 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   void sse_encode_box_autoadd_pdf_doc(PdfDoc self, SseSerializer serializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     sse_encode_pdf_doc(self, serializer);
+  }
+
+  @protected
+  void sse_encode_box_autoadd_pdf_note(PdfNote self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_pdf_note(self, serializer);
+  }
+
+  @protected
+  void sse_encode_box_autoadd_vocab_encounter(
+    VocabEncounter self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_vocab_encounter(self, serializer);
+  }
+
+  @protected
+  void sse_encode_box_autoadd_vocab_entry(
+    VocabEntry self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_vocab_entry(self, serializer);
+  }
+
+  @protected
+  void sse_encode_box_autoadd_vocab_source(
+    VocabSource self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_vocab_source(self, serializer);
+  }
+
+  @protected
+  void sse_encode_box_autoadd_vocab_source_filter(
+    VocabSourceFilter self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_vocab_source_filter(self, serializer);
   }
 
   @protected
@@ -1668,6 +2880,15 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  void sse_encode_list_pdf_note(List<PdfNote> self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_i_32(self.length, serializer);
+    for (final item in self) {
+      sse_encode_pdf_note(item, serializer);
+    }
+  }
+
+  @protected
   void sse_encode_list_prim_u_8_strict(
     Uint8List self,
     SseSerializer serializer,
@@ -1686,6 +2907,30 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     sse_encode_i_32(self.length, serializer);
     for (final item in self) {
       sse_encode_record_string_string(item, serializer);
+    }
+  }
+
+  @protected
+  void sse_encode_list_vocab_encounter(
+    List<VocabEncounter> self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_i_32(self.length, serializer);
+    for (final item in self) {
+      sse_encode_vocab_encounter(item, serializer);
+    }
+  }
+
+  @protected
+  void sse_encode_list_vocab_entry(
+    List<VocabEntry> self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_i_32(self.length, serializer);
+    for (final item in self) {
+      sse_encode_vocab_entry(item, serializer);
     }
   }
 
@@ -1835,6 +3080,27 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  void sse_encode_pdf_note(PdfNote self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_String(self.id, serializer);
+    sse_encode_String(self.docId, serializer);
+    sse_encode_i_32(self.pageIndex, serializer);
+    sse_encode_String(self.selectedText, serializer);
+    sse_encode_String(self.selectedSentence, serializer);
+    sse_encode_String(self.content, serializer);
+    sse_encode_list_String(self.tags, serializer);
+    sse_encode_String(self.createdAt, serializer);
+    sse_encode_String(self.updatedAt, serializer);
+  }
+
+  @protected
+  void sse_encode_pdf_notes_data(PdfNotesData self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_u_32(self.version, serializer);
+    sse_encode_list_pdf_note(self.notes, serializer);
+  }
+
+  @protected
   void sse_encode_record_string_string(
     (String, String) self,
     SseSerializer serializer,
@@ -1881,4 +3147,152 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   void sse_encode_unit(void self, SseSerializer serializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
   }
+
+  @protected
+  void sse_encode_usize(BigInt self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    serializer.buffer.putBigUint64(self);
+  }
+
+  @protected
+  void sse_encode_vocab_data(VocabData self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_u_32(self.version, serializer);
+    sse_encode_list_vocab_entry(self.entries, serializer);
+  }
+
+  @protected
+  void sse_encode_vocab_encounter(
+    VocabEncounter self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_String(self.id, serializer);
+    sse_encode_String(self.selectedText, serializer);
+    sse_encode_String(self.sentence, serializer);
+    sse_encode_vocab_source(self.source, serializer);
+    sse_encode_u_32(self.lookupCount, serializer);
+    sse_encode_String(self.firstSeen, serializer);
+    sse_encode_String(self.lastSeen, serializer);
+  }
+
+  @protected
+  void sse_encode_vocab_entry(VocabEntry self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_String(self.lemma, serializer);
+    sse_encode_String(self.language, serializer);
+    sse_encode_list_String(self.surfaceForms, serializer);
+    sse_encode_String(self.definition, serializer);
+    sse_encode_bool(self.definitionEdited, serializer);
+    sse_encode_list_vocab_encounter(self.encounters, serializer);
+    sse_encode_String(self.createdAt, serializer);
+    sse_encode_String(self.updatedAt, serializer);
+  }
+
+  @protected
+  void sse_encode_vocab_error(VocabError self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    switch (self) {
+      case VocabError_NetworkError(field0: final field0):
+        sse_encode_i_32(0, serializer);
+        sse_encode_String(field0, serializer);
+      case VocabError_TimeoutError():
+        sse_encode_i_32(1, serializer);
+      case VocabError_ApiKeyError():
+        sse_encode_i_32(2, serializer);
+      case VocabError_RateLimitError():
+        sse_encode_i_32(3, serializer);
+      case VocabError_InvalidSelection(field0: final field0):
+        sse_encode_i_32(4, serializer);
+        sse_encode_String(field0, serializer);
+      case VocabError_ParseError(field0: final field0):
+        sse_encode_i_32(5, serializer);
+        sse_encode_String(field0, serializer);
+      case VocabError_StorageError(field0: final field0):
+        sse_encode_i_32(6, serializer);
+        sse_encode_String(field0, serializer);
+      case VocabError_UnknownError(field0: final field0):
+        sse_encode_i_32(7, serializer);
+        sse_encode_String(field0, serializer);
+    }
+  }
+
+  @protected
+  void sse_encode_vocab_lookup_result(
+    VocabLookupResult self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_vocab_entry(self.entry, serializer);
+    sse_encode_String(self.encounterId, serializer);
+    sse_encode_bool(self.cacheHit, serializer);
+  }
+
+  @protected
+  void sse_encode_vocab_source(VocabSource self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    switch (self) {
+      case VocabSource_Paper(bookId: final bookId, pageId: final pageId):
+        sse_encode_i_32(0, serializer);
+        sse_encode_String(bookId, serializer);
+        sse_encode_String(pageId, serializer);
+      case VocabSource_Pdf(docId: final docId, pageIndex: final pageIndex):
+        sse_encode_i_32(1, serializer);
+        sse_encode_String(docId, serializer);
+        sse_encode_i_32(pageIndex, serializer);
+    }
+  }
+
+  @protected
+  void sse_encode_vocab_source_filter(
+    VocabSourceFilter self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    switch (self) {
+      case VocabSourceFilter_PaperBook(bookId: final bookId):
+        sse_encode_i_32(0, serializer);
+        sse_encode_String(bookId, serializer);
+      case VocabSourceFilter_PdfDoc(docId: final docId):
+        sse_encode_i_32(1, serializer);
+        sse_encode_String(docId, serializer);
+      case VocabSourceFilter_All():
+        sse_encode_i_32(2, serializer);
+    }
+  }
+}
+
+@sealed
+class ReqwestChatClientImpl extends RustOpaque implements ReqwestChatClient {
+  // Not to be used by end users
+  ReqwestChatClientImpl.frbInternalDcoDecode(List<dynamic> wire)
+    : super.frbInternalDcoDecode(wire, _kStaticData);
+
+  // Not to be used by end users
+  ReqwestChatClientImpl.frbInternalSseDecode(
+    BigInt ptr,
+    int externalSizeOnNative,
+  ) : super.frbInternalSseDecode(ptr, externalSizeOnNative, _kStaticData);
+
+  static final _kStaticData = RustArcStaticData(
+    rustArcIncrementStrongCount:
+        RustLib.instance.api.rust_arc_increment_strong_count_ReqwestChatClient,
+    rustArcDecrementStrongCount:
+        RustLib.instance.api.rust_arc_decrement_strong_count_ReqwestChatClient,
+    rustArcDecrementStrongCountPtr: RustLib
+        .instance
+        .api
+        .rust_arc_decrement_strong_count_ReqwestChatClientPtr,
+  );
+
+  Future<String> chatCompletion({
+    required String apiKey,
+    required String systemPrompt,
+    required String userPayload,
+  }) => RustLib.instance.api.crateApiVocabReqwestChatClientChatCompletion(
+    that: this,
+    apiKey: apiKey,
+    systemPrompt: systemPrompt,
+    userPayload: userPayload,
+  );
 }

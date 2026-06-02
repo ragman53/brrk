@@ -26,6 +26,8 @@
 
 // Section: imports
 
+use crate::api::vocab::MistralChatClient;
+use crate::api::vocab::*;
 use flutter_rust_bridge::for_generated::byteorder::{NativeEndian, ReadBytesExt, WriteBytesExt};
 use flutter_rust_bridge::for_generated::{transform_result_dco, Lifetimeable, Lockable};
 use flutter_rust_bridge::{Handler, IntoIntoDart};
@@ -38,7 +40,7 @@ flutter_rust_bridge::frb_generated_boilerplate!(
     default_rust_auto_opaque = RustAutoOpaqueMoi,
 );
 pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_VERSION: &str = "2.12.0";
-pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_CONTENT_HASH: i32 = 382476010;
+pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_CONTENT_HASH: i32 = 1050908569;
 
 // Section: executor
 
@@ -46,6 +48,63 @@ flutter_rust_bridge::frb_generated_default_handler!();
 
 // Section: wire_funcs
 
+fn wire__crate__api__vocab__ReqwestChatClient_chat_completion_impl(
+    port_: flutter_rust_bridge::for_generated::MessagePort,
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_normal::<flutter_rust_bridge::for_generated::SseCodec, _, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "ReqwestChatClient_chat_completion",
+            port: Some(port_),
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            let api_that = <RustOpaqueMoi<
+                flutter_rust_bridge::for_generated::RustAutoOpaqueInner<ReqwestChatClient>,
+            >>::sse_decode(&mut deserializer);
+            let api_api_key = <String>::sse_decode(&mut deserializer);
+            let api_system_prompt = <String>::sse_decode(&mut deserializer);
+            let api_user_payload = <String>::sse_decode(&mut deserializer);
+            deserializer.end();
+            move |context| {
+                transform_result_sse::<_, crate::api::models::VocabError>((move || {
+                    let mut api_that_guard = None;
+                    let decode_indices_ =
+                        flutter_rust_bridge::for_generated::lockable_compute_decode_order(vec![
+                            flutter_rust_bridge::for_generated::LockableOrderInfo::new(
+                                &api_that, 0, false,
+                            ),
+                        ]);
+                    for i in decode_indices_ {
+                        match i {
+                            0 => api_that_guard = Some(api_that.lockable_decode_sync_ref()),
+                            _ => unreachable!(),
+                        }
+                    }
+                    let api_that_guard = api_that_guard.unwrap();
+                    let output_ok = crate::api::vocab::ReqwestChatClient::chat_completion(
+                        &*api_that_guard,
+                        &api_api_key,
+                        &api_system_prompt,
+                        &api_user_payload,
+                    )?;
+                    Ok(output_ok)
+                })())
+            }
+        },
+    )
+}
 fn wire__crate__api__storage__clear_ocr_cache_impl(
     port_: flutter_rust_bridge::for_generated::MessagePort,
     ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
@@ -217,6 +276,114 @@ fn wire__crate__api__storage__delete_pdf_doc_impl(
         },
     )
 }
+fn wire__crate__api__storage__delete_pdf_note_impl(
+    port_: flutter_rust_bridge::for_generated::MessagePort,
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_normal::<flutter_rust_bridge::for_generated::SseCodec, _, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "delete_pdf_note",
+            port: Some(port_),
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            let api_doc_id = <String>::sse_decode(&mut deserializer);
+            let api_note_id = <String>::sse_decode(&mut deserializer);
+            deserializer.end();
+            move |context| {
+                transform_result_sse::<_, crate::api::models::StorageError>((move || {
+                    let output_ok = crate::api::storage::delete_pdf_note(api_doc_id, api_note_id)?;
+                    Ok(output_ok)
+                })())
+            }
+        },
+    )
+}
+fn wire__crate__api__storage__delete_vocabulary_encounter_impl(
+    port_: flutter_rust_bridge::for_generated::MessagePort,
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_normal::<flutter_rust_bridge::for_generated::SseCodec, _, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "delete_vocabulary_encounter",
+            port: Some(port_),
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            let api_language = <String>::sse_decode(&mut deserializer);
+            let api_lemma = <String>::sse_decode(&mut deserializer);
+            let api_encounter_id = <String>::sse_decode(&mut deserializer);
+            deserializer.end();
+            move |context| {
+                transform_result_sse::<_, crate::api::models::StorageError>((move || {
+                    let output_ok = crate::api::storage::delete_vocabulary_encounter(
+                        api_language,
+                        api_lemma,
+                        api_encounter_id,
+                    )?;
+                    Ok(output_ok)
+                })())
+            }
+        },
+    )
+}
+fn wire__crate__api__storage__delete_vocabulary_entry_impl(
+    port_: flutter_rust_bridge::for_generated::MessagePort,
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_normal::<flutter_rust_bridge::for_generated::SseCodec, _, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "delete_vocabulary_entry",
+            port: Some(port_),
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            let api_language = <String>::sse_decode(&mut deserializer);
+            let api_lemma = <String>::sse_decode(&mut deserializer);
+            deserializer.end();
+            move |context| {
+                transform_result_sse::<_, crate::api::models::StorageError>((move || {
+                    let output_ok =
+                        crate::api::storage::delete_vocabulary_entry(api_language, api_lemma)?;
+                    Ok(output_ok)
+                })())
+            }
+        },
+    )
+}
 fn wire__crate__api__storage__get_paper_books_impl(
     port_: flutter_rust_bridge::for_generated::MessagePort,
     ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
@@ -347,6 +514,40 @@ fn wire__crate__api__storage__get_pdf_markdown_impl(
         },
     )
 }
+fn wire__crate__api__storage__get_pdf_notes_impl(
+    port_: flutter_rust_bridge::for_generated::MessagePort,
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_normal::<flutter_rust_bridge::for_generated::SseCodec, _, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "get_pdf_notes",
+            port: Some(port_),
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            let api_doc_id = <String>::sse_decode(&mut deserializer);
+            let api_page_index = <Option<i32>>::sse_decode(&mut deserializer);
+            deserializer.end();
+            move |context| {
+                transform_result_sse::<_, crate::api::models::StorageError>((move || {
+                    let output_ok = crate::api::storage::get_pdf_notes(api_doc_id, api_page_index)?;
+                    Ok(output_ok)
+                })())
+            }
+        },
+    )
+}
 fn wire__crate__api__storage__init_app_impl(
     ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
     rust_vec_len_: i32,
@@ -374,6 +575,130 @@ fn wire__crate__api__storage__init_app_impl(
                 let output_ok = crate::api::storage::init_app(api_data_dir)?;
                 Ok(output_ok)
             })())
+        },
+    )
+}
+fn wire__crate__api__storage__list_vocabulary_impl(
+    port_: flutter_rust_bridge::for_generated::MessagePort,
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_normal::<flutter_rust_bridge::for_generated::SseCodec, _, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "list_vocabulary",
+            port: Some(port_),
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            let api_source_filter =
+                <crate::api::models::VocabSourceFilter>::sse_decode(&mut deserializer);
+            deserializer.end();
+            move |context| {
+                transform_result_sse::<_, crate::api::models::StorageError>((move || {
+                    let output_ok = crate::api::storage::list_vocabulary(api_source_filter)?;
+                    Ok(output_ok)
+                })())
+            }
+        },
+    )
+}
+fn wire__crate__api__storage__lookup_vocabulary_impl(
+    port_: flutter_rust_bridge::for_generated::MessagePort,
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_normal::<flutter_rust_bridge::for_generated::SseCodec, _, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "lookup_vocabulary",
+            port: Some(port_),
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            let api_api_key = <String>::sse_decode(&mut deserializer);
+            let api_selected_text = <String>::sse_decode(&mut deserializer);
+            let api_page_context = <String>::sse_decode(&mut deserializer);
+            let api_selection_start = <Option<i32>>::sse_decode(&mut deserializer);
+            let api_selection_end = <Option<i32>>::sse_decode(&mut deserializer);
+            let api_source = <crate::api::models::VocabSource>::sse_decode(&mut deserializer);
+            deserializer.end();
+            move |context| {
+                transform_result_sse::<_, crate::api::models::VocabError>((move || {
+                    let output_ok = crate::api::storage::lookup_vocabulary(
+                        api_api_key,
+                        api_selected_text,
+                        api_page_context,
+                        api_selection_start,
+                        api_selection_end,
+                        api_source,
+                    )?;
+                    Ok(output_ok)
+                })())
+            }
+        },
+    )
+}
+fn wire__crate__api__vocab__lookup_vocabulary_impl(
+    port_: flutter_rust_bridge::for_generated::MessagePort,
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_normal::<flutter_rust_bridge::for_generated::SseCodec, _, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "lookup_vocabulary",
+            port: Some(port_),
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            let api_api_key = <String>::sse_decode(&mut deserializer);
+            let api_selected_text = <String>::sse_decode(&mut deserializer);
+            let api_page_context = <String>::sse_decode(&mut deserializer);
+            let api_selection_start = <Option<i32>>::sse_decode(&mut deserializer);
+            let api_selection_end = <Option<i32>>::sse_decode(&mut deserializer);
+            let api_source = <crate::api::models::VocabSource>::sse_decode(&mut deserializer);
+            deserializer.end();
+            move |context| {
+                transform_result_sse::<_, crate::api::models::VocabError>((move || {
+                    let output_ok = crate::api::vocab::lookup_vocabulary(
+                        api_api_key,
+                        api_selected_text,
+                        api_page_context,
+                        api_selection_start,
+                        api_selection_end,
+                        api_source,
+                    )?;
+                    Ok(output_ok)
+                })())
+            }
         },
     )
 }
@@ -470,6 +795,39 @@ fn wire__crate__api__models__pdf_manual_markdown_data_default_impl(
                 transform_result_sse::<_, ()>((move || {
                     let output_ok =
                         Result::<_, ()>::Ok(crate::api::models::PdfManualMarkdownData::default())?;
+                    Ok(output_ok)
+                })())
+            }
+        },
+    )
+}
+fn wire__crate__api__models__pdf_notes_data_default_impl(
+    port_: flutter_rust_bridge::for_generated::MessagePort,
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_normal::<flutter_rust_bridge::for_generated::SseCodec, _, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "pdf_notes_data_default",
+            port: Some(port_),
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            deserializer.end();
+            move |context| {
+                transform_result_sse::<_, ()>((move || {
+                    let output_ok =
+                        Result::<_, ()>::Ok(crate::api::models::PdfNotesData::default())?;
                     Ok(output_ok)
                 })())
             }
@@ -699,6 +1057,39 @@ fn wire__crate__api__storage__save_pdf_doc_impl(
         },
     )
 }
+fn wire__crate__api__storage__save_pdf_note_impl(
+    port_: flutter_rust_bridge::for_generated::MessagePort,
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_normal::<flutter_rust_bridge::for_generated::SseCodec, _, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "save_pdf_note",
+            port: Some(port_),
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            let api_note = <crate::api::models::PdfNote>::sse_decode(&mut deserializer);
+            deserializer.end();
+            move |context| {
+                transform_result_sse::<_, crate::api::models::StorageError>((move || {
+                    let output_ok = crate::api::storage::save_pdf_note(api_note)?;
+                    Ok(output_ok)
+                })())
+            }
+        },
+    )
+}
 fn wire__crate__api__storage__save_pdf_page_manual_markdown_impl(
     port_: flutter_rust_bridge::for_generated::MessagePort,
     ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
@@ -731,6 +1122,80 @@ fn wire__crate__api__storage__save_pdf_page_manual_markdown_impl(
                         api_doc_id,
                         api_page_index,
                         api_manual_markdown,
+                    )?;
+                    Ok(output_ok)
+                })())
+            }
+        },
+    )
+}
+fn wire__crate__api__storage__save_vocabulary_lookup_impl(
+    port_: flutter_rust_bridge::for_generated::MessagePort,
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_normal::<flutter_rust_bridge::for_generated::SseCodec, _, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "save_vocabulary_lookup",
+            port: Some(port_),
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            let api_entry = <crate::api::models::VocabEntry>::sse_decode(&mut deserializer);
+            let api_encounter = <crate::api::models::VocabEncounter>::sse_decode(&mut deserializer);
+            deserializer.end();
+            move |context| {
+                transform_result_sse::<_, crate::api::models::StorageError>((move || {
+                    let output_ok =
+                        crate::api::storage::save_vocabulary_lookup(api_entry, api_encounter)?;
+                    Ok(output_ok)
+                })())
+            }
+        },
+    )
+}
+fn wire__crate__api__storage__update_vocabulary_definition_impl(
+    port_: flutter_rust_bridge::for_generated::MessagePort,
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_normal::<flutter_rust_bridge::for_generated::SseCodec, _, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "update_vocabulary_definition",
+            port: Some(port_),
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            let api_language = <String>::sse_decode(&mut deserializer);
+            let api_lemma = <String>::sse_decode(&mut deserializer);
+            let api_definition = <String>::sse_decode(&mut deserializer);
+            deserializer.end();
+            move |context| {
+                transform_result_sse::<_, crate::api::models::StorageError>((move || {
+                    let output_ok = crate::api::storage::update_vocabulary_definition(
+                        api_language,
+                        api_lemma,
+                        api_definition,
                     )?;
                     Ok(output_ok)
                 })())
@@ -777,14 +1242,107 @@ fn wire__crate__api__storage__upsert_paper_page_impl(
         },
     )
 }
+fn wire__crate__api__models__vocab_data_default_impl(
+    port_: flutter_rust_bridge::for_generated::MessagePort,
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_normal::<flutter_rust_bridge::for_generated::SseCodec, _, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "vocab_data_default",
+            port: Some(port_),
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            deserializer.end();
+            move |context| {
+                transform_result_sse::<_, ()>((move || {
+                    let output_ok = Result::<_, ()>::Ok(crate::api::models::VocabData::default())?;
+                    Ok(output_ok)
+                })())
+            }
+        },
+    )
+}
+fn wire__crate__api__models__vocab_entry_total_lookup_count_impl(
+    port_: flutter_rust_bridge::for_generated::MessagePort,
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_normal::<flutter_rust_bridge::for_generated::SseCodec, _, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "vocab_entry_total_lookup_count",
+            port: Some(port_),
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            let api_that = <crate::api::models::VocabEntry>::sse_decode(&mut deserializer);
+            deserializer.end();
+            move |context| {
+                transform_result_sse::<_, ()>((move || {
+                    let output_ok = Result::<_, ()>::Ok(
+                        crate::api::models::VocabEntry::total_lookup_count(&api_that),
+                    )?;
+                    Ok(output_ok)
+                })())
+            }
+        },
+    )
+}
+
+// Section: related_funcs
+
+flutter_rust_bridge::frb_generated_moi_arc_impl_value!(
+    flutter_rust_bridge::for_generated::RustAutoOpaqueInner<ReqwestChatClient>
+);
 
 // Section: dart2rust
+
+impl SseDecode for ReqwestChatClient {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut inner = <RustOpaqueMoi<
+            flutter_rust_bridge::for_generated::RustAutoOpaqueInner<ReqwestChatClient>,
+        >>::sse_decode(deserializer);
+        return flutter_rust_bridge::for_generated::rust_auto_opaque_decode_owned(inner);
+    }
+}
 
 impl SseDecode for std::collections::HashMap<String, String> {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
         let mut inner = <Vec<(String, String)>>::sse_decode(deserializer);
         return inner.into_iter().collect();
+    }
+}
+
+impl SseDecode
+    for RustOpaqueMoi<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<ReqwestChatClient>>
+{
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut inner = <usize>::sse_decode(deserializer);
+        return decode_rust_opaque_moi(inner);
     }
 }
 
@@ -882,6 +1440,18 @@ impl SseDecode for Vec<crate::api::models::PdfDoc> {
     }
 }
 
+impl SseDecode for Vec<crate::api::models::PdfNote> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut len_ = <i32>::sse_decode(deserializer);
+        let mut ans_ = Vec::with_capacity(len_ as usize);
+        for idx_ in 0..len_ {
+            ans_.push(<crate::api::models::PdfNote>::sse_decode(deserializer));
+        }
+        return ans_;
+    }
+}
+
 impl SseDecode for Vec<u8> {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
@@ -901,6 +1471,32 @@ impl SseDecode for Vec<(String, String)> {
         let mut ans_ = Vec::with_capacity(len_ as usize);
         for idx_ in 0..len_ {
             ans_.push(<(String, String)>::sse_decode(deserializer));
+        }
+        return ans_;
+    }
+}
+
+impl SseDecode for Vec<crate::api::models::VocabEncounter> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut len_ = <i32>::sse_decode(deserializer);
+        let mut ans_ = Vec::with_capacity(len_ as usize);
+        for idx_ in 0..len_ {
+            ans_.push(<crate::api::models::VocabEncounter>::sse_decode(
+                deserializer,
+            ));
+        }
+        return ans_;
+    }
+}
+
+impl SseDecode for Vec<crate::api::models::VocabEntry> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut len_ = <i32>::sse_decode(deserializer);
+        let mut ans_ = Vec::with_capacity(len_ as usize);
+        for idx_ in 0..len_ {
+            ans_.push(<crate::api::models::VocabEntry>::sse_decode(deserializer));
         }
         return ans_;
     }
@@ -1131,6 +1727,44 @@ impl SseDecode for crate::api::models::PdfManualMarkdownData {
     }
 }
 
+impl SseDecode for crate::api::models::PdfNote {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut var_id = <String>::sse_decode(deserializer);
+        let mut var_docId = <String>::sse_decode(deserializer);
+        let mut var_pageIndex = <i32>::sse_decode(deserializer);
+        let mut var_selectedText = <String>::sse_decode(deserializer);
+        let mut var_selectedSentence = <String>::sse_decode(deserializer);
+        let mut var_content = <String>::sse_decode(deserializer);
+        let mut var_tags = <Vec<String>>::sse_decode(deserializer);
+        let mut var_createdAt = <String>::sse_decode(deserializer);
+        let mut var_updatedAt = <String>::sse_decode(deserializer);
+        return crate::api::models::PdfNote {
+            id: var_id,
+            doc_id: var_docId,
+            page_index: var_pageIndex,
+            selected_text: var_selectedText,
+            selected_sentence: var_selectedSentence,
+            content: var_content,
+            tags: var_tags,
+            created_at: var_createdAt,
+            updated_at: var_updatedAt,
+        };
+    }
+}
+
+impl SseDecode for crate::api::models::PdfNotesData {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut var_version = <u32>::sse_decode(deserializer);
+        let mut var_notes = <Vec<crate::api::models::PdfNote>>::sse_decode(deserializer);
+        return crate::api::models::PdfNotesData {
+            version: var_version,
+            notes: var_notes,
+        };
+    }
+}
+
 impl SseDecode for (String, String) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
@@ -1190,6 +1824,180 @@ impl SseDecode for () {
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {}
 }
 
+impl SseDecode for usize {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        deserializer.cursor.read_u64::<NativeEndian>().unwrap() as _
+    }
+}
+
+impl SseDecode for crate::api::models::VocabData {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut var_version = <u32>::sse_decode(deserializer);
+        let mut var_entries = <Vec<crate::api::models::VocabEntry>>::sse_decode(deserializer);
+        return crate::api::models::VocabData {
+            version: var_version,
+            entries: var_entries,
+        };
+    }
+}
+
+impl SseDecode for crate::api::models::VocabEncounter {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut var_id = <String>::sse_decode(deserializer);
+        let mut var_selectedText = <String>::sse_decode(deserializer);
+        let mut var_sentence = <String>::sse_decode(deserializer);
+        let mut var_source = <crate::api::models::VocabSource>::sse_decode(deserializer);
+        let mut var_lookupCount = <u32>::sse_decode(deserializer);
+        let mut var_firstSeen = <String>::sse_decode(deserializer);
+        let mut var_lastSeen = <String>::sse_decode(deserializer);
+        return crate::api::models::VocabEncounter {
+            id: var_id,
+            selected_text: var_selectedText,
+            sentence: var_sentence,
+            source: var_source,
+            lookup_count: var_lookupCount,
+            first_seen: var_firstSeen,
+            last_seen: var_lastSeen,
+        };
+    }
+}
+
+impl SseDecode for crate::api::models::VocabEntry {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut var_lemma = <String>::sse_decode(deserializer);
+        let mut var_language = <String>::sse_decode(deserializer);
+        let mut var_surfaceForms = <Vec<String>>::sse_decode(deserializer);
+        let mut var_definition = <String>::sse_decode(deserializer);
+        let mut var_definitionEdited = <bool>::sse_decode(deserializer);
+        let mut var_encounters =
+            <Vec<crate::api::models::VocabEncounter>>::sse_decode(deserializer);
+        let mut var_createdAt = <String>::sse_decode(deserializer);
+        let mut var_updatedAt = <String>::sse_decode(deserializer);
+        return crate::api::models::VocabEntry {
+            lemma: var_lemma,
+            language: var_language,
+            surface_forms: var_surfaceForms,
+            definition: var_definition,
+            definition_edited: var_definitionEdited,
+            encounters: var_encounters,
+            created_at: var_createdAt,
+            updated_at: var_updatedAt,
+        };
+    }
+}
+
+impl SseDecode for crate::api::models::VocabError {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut tag_ = <i32>::sse_decode(deserializer);
+        match tag_ {
+            0 => {
+                let mut var_field0 = <String>::sse_decode(deserializer);
+                return crate::api::models::VocabError::NetworkError(var_field0);
+            }
+            1 => {
+                return crate::api::models::VocabError::TimeoutError;
+            }
+            2 => {
+                return crate::api::models::VocabError::ApiKeyError;
+            }
+            3 => {
+                return crate::api::models::VocabError::RateLimitError;
+            }
+            4 => {
+                let mut var_field0 = <String>::sse_decode(deserializer);
+                return crate::api::models::VocabError::InvalidSelection(var_field0);
+            }
+            5 => {
+                let mut var_field0 = <String>::sse_decode(deserializer);
+                return crate::api::models::VocabError::ParseError(var_field0);
+            }
+            6 => {
+                let mut var_field0 = <String>::sse_decode(deserializer);
+                return crate::api::models::VocabError::StorageError(var_field0);
+            }
+            7 => {
+                let mut var_field0 = <String>::sse_decode(deserializer);
+                return crate::api::models::VocabError::UnknownError(var_field0);
+            }
+            _ => {
+                unimplemented!("");
+            }
+        }
+    }
+}
+
+impl SseDecode for crate::api::models::VocabLookupResult {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut var_entry = <crate::api::models::VocabEntry>::sse_decode(deserializer);
+        let mut var_encounterId = <String>::sse_decode(deserializer);
+        let mut var_cacheHit = <bool>::sse_decode(deserializer);
+        return crate::api::models::VocabLookupResult {
+            entry: var_entry,
+            encounter_id: var_encounterId,
+            cache_hit: var_cacheHit,
+        };
+    }
+}
+
+impl SseDecode for crate::api::models::VocabSource {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut tag_ = <i32>::sse_decode(deserializer);
+        match tag_ {
+            0 => {
+                let mut var_bookId = <String>::sse_decode(deserializer);
+                let mut var_pageId = <String>::sse_decode(deserializer);
+                return crate::api::models::VocabSource::Paper {
+                    book_id: var_bookId,
+                    page_id: var_pageId,
+                };
+            }
+            1 => {
+                let mut var_docId = <String>::sse_decode(deserializer);
+                let mut var_pageIndex = <i32>::sse_decode(deserializer);
+                return crate::api::models::VocabSource::Pdf {
+                    doc_id: var_docId,
+                    page_index: var_pageIndex,
+                };
+            }
+            _ => {
+                unimplemented!("");
+            }
+        }
+    }
+}
+
+impl SseDecode for crate::api::models::VocabSourceFilter {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut tag_ = <i32>::sse_decode(deserializer);
+        match tag_ {
+            0 => {
+                let mut var_bookId = <String>::sse_decode(deserializer);
+                return crate::api::models::VocabSourceFilter::PaperBook {
+                    book_id: var_bookId,
+                };
+            }
+            1 => {
+                let mut var_docId = <String>::sse_decode(deserializer);
+                return crate::api::models::VocabSourceFilter::PdfDoc { doc_id: var_docId };
+            }
+            2 => {
+                return crate::api::models::VocabSourceFilter::All;
+            }
+            _ => {
+                unimplemented!("");
+            }
+        }
+    }
+}
+
 fn pde_ffi_dispatcher_primary_impl(
     func_id: i32,
     port: flutter_rust_bridge::for_generated::MessagePort,
@@ -1199,53 +2007,99 @@ fn pde_ffi_dispatcher_primary_impl(
 ) {
     // Codec=Pde (Serialization + dispatch), see doc to use other codecs
     match func_id {
-        1 => wire__crate__api__storage__clear_ocr_cache_impl(port, ptr, rust_vec_len, data_len),
-        2 => wire__crate__api__storage__delete_note_impl(port, ptr, rust_vec_len, data_len),
-        3 => wire__crate__api__storage__delete_paper_book_impl(port, ptr, rust_vec_len, data_len),
-        4 => wire__crate__api__storage__delete_paper_page_impl(port, ptr, rust_vec_len, data_len),
-        5 => wire__crate__api__storage__delete_pdf_doc_impl(port, ptr, rust_vec_len, data_len),
-        6 => wire__crate__api__storage__get_paper_books_impl(port, ptr, rust_vec_len, data_len),
-        7 => wire__crate__api__storage__get_pdf_docs_impl(port, ptr, rust_vec_len, data_len),
-        8 => wire__crate__api__storage__get_pdf_manual_markdown_impl(
+        1 => wire__crate__api__vocab__ReqwestChatClient_chat_completion_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        9 => wire__crate__api__storage__get_pdf_markdown_impl(port, ptr, rust_vec_len, data_len),
-        11 => wire__crate__api__models__paper_books_data_default_impl(
+        3 => wire__crate__api__storage__clear_ocr_cache_impl(port, ptr, rust_vec_len, data_len),
+        4 => wire__crate__api__storage__delete_note_impl(port, ptr, rust_vec_len, data_len),
+        5 => wire__crate__api__storage__delete_paper_book_impl(port, ptr, rust_vec_len, data_len),
+        6 => wire__crate__api__storage__delete_paper_page_impl(port, ptr, rust_vec_len, data_len),
+        7 => wire__crate__api__storage__delete_pdf_doc_impl(port, ptr, rust_vec_len, data_len),
+        8 => wire__crate__api__storage__delete_pdf_note_impl(port, ptr, rust_vec_len, data_len),
+        9 => wire__crate__api__storage__delete_vocabulary_encounter_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        12 => {
+        10 => wire__crate__api__storage__delete_vocabulary_entry_impl(
+            port,
+            ptr,
+            rust_vec_len,
+            data_len,
+        ),
+        11 => wire__crate__api__storage__get_paper_books_impl(port, ptr, rust_vec_len, data_len),
+        12 => wire__crate__api__storage__get_pdf_docs_impl(port, ptr, rust_vec_len, data_len),
+        13 => wire__crate__api__storage__get_pdf_manual_markdown_impl(
+            port,
+            ptr,
+            rust_vec_len,
+            data_len,
+        ),
+        14 => wire__crate__api__storage__get_pdf_markdown_impl(port, ptr, rust_vec_len, data_len),
+        15 => wire__crate__api__storage__get_pdf_notes_impl(port, ptr, rust_vec_len, data_len),
+        17 => wire__crate__api__storage__list_vocabulary_impl(port, ptr, rust_vec_len, data_len),
+        18 => wire__crate__api__storage__lookup_vocabulary_impl(port, ptr, rust_vec_len, data_len),
+        19 => wire__crate__api__vocab__lookup_vocabulary_impl(port, ptr, rust_vec_len, data_len),
+        20 => wire__crate__api__models__paper_books_data_default_impl(
+            port,
+            ptr,
+            rust_vec_len,
+            data_len,
+        ),
+        21 => {
             wire__crate__api__models__pdf_docs_data_default_impl(port, ptr, rust_vec_len, data_len)
         }
-        13 => wire__crate__api__models__pdf_manual_markdown_data_default_impl(
+        22 => wire__crate__api__models__pdf_manual_markdown_data_default_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        14 => wire__crate__api__ocr__process_image_impl(port, ptr, rust_vec_len, data_len),
-        15 => wire__crate__api__ocr__process_pdf_impl(port, ptr, rust_vec_len, data_len),
-        16 => wire__crate__api__storage__save_note_impl(port, ptr, rust_vec_len, data_len),
-        17 => wire__crate__api__storage__save_paper_book_impl(port, ptr, rust_vec_len, data_len),
-        18 => wire__crate__api__storage__save_paper_page_manual_markdown_impl(
+        23 => {
+            wire__crate__api__models__pdf_notes_data_default_impl(port, ptr, rust_vec_len, data_len)
+        }
+        24 => wire__crate__api__ocr__process_image_impl(port, ptr, rust_vec_len, data_len),
+        25 => wire__crate__api__ocr__process_pdf_impl(port, ptr, rust_vec_len, data_len),
+        26 => wire__crate__api__storage__save_note_impl(port, ptr, rust_vec_len, data_len),
+        27 => wire__crate__api__storage__save_paper_book_impl(port, ptr, rust_vec_len, data_len),
+        28 => wire__crate__api__storage__save_paper_page_manual_markdown_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        19 => wire__crate__api__storage__save_pdf_doc_impl(port, ptr, rust_vec_len, data_len),
-        20 => wire__crate__api__storage__save_pdf_page_manual_markdown_impl(
+        29 => wire__crate__api__storage__save_pdf_doc_impl(port, ptr, rust_vec_len, data_len),
+        30 => wire__crate__api__storage__save_pdf_note_impl(port, ptr, rust_vec_len, data_len),
+        31 => wire__crate__api__storage__save_pdf_page_manual_markdown_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        21 => wire__crate__api__storage__upsert_paper_page_impl(port, ptr, rust_vec_len, data_len),
+        32 => wire__crate__api__storage__save_vocabulary_lookup_impl(
+            port,
+            ptr,
+            rust_vec_len,
+            data_len,
+        ),
+        33 => wire__crate__api__storage__update_vocabulary_definition_impl(
+            port,
+            ptr,
+            rust_vec_len,
+            data_len,
+        ),
+        34 => wire__crate__api__storage__upsert_paper_page_impl(port, ptr, rust_vec_len, data_len),
+        35 => wire__crate__api__models__vocab_data_default_impl(port, ptr, rust_vec_len, data_len),
+        36 => wire__crate__api__models__vocab_entry_total_lookup_count_impl(
+            port,
+            ptr,
+            rust_vec_len,
+            data_len,
+        ),
         _ => unreachable!(),
     }
 }
@@ -1258,12 +2112,27 @@ fn pde_ffi_dispatcher_sync_impl(
 ) -> flutter_rust_bridge::for_generated::WireSyncRust2DartSse {
     // Codec=Pde (Serialization + dispatch), see doc to use other codecs
     match func_id {
-        10 => wire__crate__api__storage__init_app_impl(ptr, rust_vec_len, data_len),
+        16 => wire__crate__api__storage__init_app_impl(ptr, rust_vec_len, data_len),
         _ => unreachable!(),
     }
 }
 
 // Section: rust2dart
+
+// Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart for FrbWrapper<ReqwestChatClient> {
+    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+        flutter_rust_bridge::for_generated::rust_auto_opaque_encode::<_, MoiArc<_>>(self.0)
+            .into_dart()
+    }
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive for FrbWrapper<ReqwestChatClient> {}
+
+impl flutter_rust_bridge::IntoIntoDart<FrbWrapper<ReqwestChatClient>> for ReqwestChatClient {
+    fn into_into_dart(self) -> FrbWrapper<ReqwestChatClient> {
+        self.into()
+    }
+}
 
 // Codec=Dco (DartCObject based), see doc to use other codecs
 impl flutter_rust_bridge::IntoDart for crate::api::models::Note {
@@ -1497,6 +2366,52 @@ impl flutter_rust_bridge::IntoIntoDart<crate::api::models::PdfManualMarkdownData
     }
 }
 // Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart for crate::api::models::PdfNote {
+    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+        [
+            self.id.into_into_dart().into_dart(),
+            self.doc_id.into_into_dart().into_dart(),
+            self.page_index.into_into_dart().into_dart(),
+            self.selected_text.into_into_dart().into_dart(),
+            self.selected_sentence.into_into_dart().into_dart(),
+            self.content.into_into_dart().into_dart(),
+            self.tags.into_into_dart().into_dart(),
+            self.created_at.into_into_dart().into_dart(),
+            self.updated_at.into_into_dart().into_dart(),
+        ]
+        .into_dart()
+    }
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive for crate::api::models::PdfNote {}
+impl flutter_rust_bridge::IntoIntoDart<crate::api::models::PdfNote>
+    for crate::api::models::PdfNote
+{
+    fn into_into_dart(self) -> crate::api::models::PdfNote {
+        self
+    }
+}
+// Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart for crate::api::models::PdfNotesData {
+    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+        [
+            self.version.into_into_dart().into_dart(),
+            self.notes.into_into_dart().into_dart(),
+        ]
+        .into_dart()
+    }
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive
+    for crate::api::models::PdfNotesData
+{
+}
+impl flutter_rust_bridge::IntoIntoDart<crate::api::models::PdfNotesData>
+    for crate::api::models::PdfNotesData
+{
+    fn into_into_dart(self) -> crate::api::models::PdfNotesData {
+        self
+    }
+}
+// Codec=Dco (DartCObject based), see doc to use other codecs
 impl flutter_rust_bridge::IntoDart for crate::api::models::StorageError {
     fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
         match self {
@@ -1530,11 +2445,222 @@ impl flutter_rust_bridge::IntoIntoDart<crate::api::models::StorageError>
         self
     }
 }
+// Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart for crate::api::models::VocabData {
+    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+        [
+            self.version.into_into_dart().into_dart(),
+            self.entries.into_into_dart().into_dart(),
+        ]
+        .into_dart()
+    }
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive for crate::api::models::VocabData {}
+impl flutter_rust_bridge::IntoIntoDart<crate::api::models::VocabData>
+    for crate::api::models::VocabData
+{
+    fn into_into_dart(self) -> crate::api::models::VocabData {
+        self
+    }
+}
+// Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart for crate::api::models::VocabEncounter {
+    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+        [
+            self.id.into_into_dart().into_dart(),
+            self.selected_text.into_into_dart().into_dart(),
+            self.sentence.into_into_dart().into_dart(),
+            self.source.into_into_dart().into_dart(),
+            self.lookup_count.into_into_dart().into_dart(),
+            self.first_seen.into_into_dart().into_dart(),
+            self.last_seen.into_into_dart().into_dart(),
+        ]
+        .into_dart()
+    }
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive
+    for crate::api::models::VocabEncounter
+{
+}
+impl flutter_rust_bridge::IntoIntoDart<crate::api::models::VocabEncounter>
+    for crate::api::models::VocabEncounter
+{
+    fn into_into_dart(self) -> crate::api::models::VocabEncounter {
+        self
+    }
+}
+// Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart for crate::api::models::VocabEntry {
+    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+        [
+            self.lemma.into_into_dart().into_dart(),
+            self.language.into_into_dart().into_dart(),
+            self.surface_forms.into_into_dart().into_dart(),
+            self.definition.into_into_dart().into_dart(),
+            self.definition_edited.into_into_dart().into_dart(),
+            self.encounters.into_into_dart().into_dart(),
+            self.created_at.into_into_dart().into_dart(),
+            self.updated_at.into_into_dart().into_dart(),
+        ]
+        .into_dart()
+    }
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive
+    for crate::api::models::VocabEntry
+{
+}
+impl flutter_rust_bridge::IntoIntoDart<crate::api::models::VocabEntry>
+    for crate::api::models::VocabEntry
+{
+    fn into_into_dart(self) -> crate::api::models::VocabEntry {
+        self
+    }
+}
+// Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart for crate::api::models::VocabError {
+    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+        match self {
+            crate::api::models::VocabError::NetworkError(field0) => {
+                [0.into_dart(), field0.into_into_dart().into_dart()].into_dart()
+            }
+            crate::api::models::VocabError::TimeoutError => [1.into_dart()].into_dart(),
+            crate::api::models::VocabError::ApiKeyError => [2.into_dart()].into_dart(),
+            crate::api::models::VocabError::RateLimitError => [3.into_dart()].into_dart(),
+            crate::api::models::VocabError::InvalidSelection(field0) => {
+                [4.into_dart(), field0.into_into_dart().into_dart()].into_dart()
+            }
+            crate::api::models::VocabError::ParseError(field0) => {
+                [5.into_dart(), field0.into_into_dart().into_dart()].into_dart()
+            }
+            crate::api::models::VocabError::StorageError(field0) => {
+                [6.into_dart(), field0.into_into_dart().into_dart()].into_dart()
+            }
+            crate::api::models::VocabError::UnknownError(field0) => {
+                [7.into_dart(), field0.into_into_dart().into_dart()].into_dart()
+            }
+            _ => {
+                unimplemented!("");
+            }
+        }
+    }
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive
+    for crate::api::models::VocabError
+{
+}
+impl flutter_rust_bridge::IntoIntoDart<crate::api::models::VocabError>
+    for crate::api::models::VocabError
+{
+    fn into_into_dart(self) -> crate::api::models::VocabError {
+        self
+    }
+}
+// Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart for crate::api::models::VocabLookupResult {
+    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+        [
+            self.entry.into_into_dart().into_dart(),
+            self.encounter_id.into_into_dart().into_dart(),
+            self.cache_hit.into_into_dart().into_dart(),
+        ]
+        .into_dart()
+    }
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive
+    for crate::api::models::VocabLookupResult
+{
+}
+impl flutter_rust_bridge::IntoIntoDart<crate::api::models::VocabLookupResult>
+    for crate::api::models::VocabLookupResult
+{
+    fn into_into_dart(self) -> crate::api::models::VocabLookupResult {
+        self
+    }
+}
+// Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart for crate::api::models::VocabSource {
+    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+        match self {
+            crate::api::models::VocabSource::Paper { book_id, page_id } => [
+                0.into_dart(),
+                book_id.into_into_dart().into_dart(),
+                page_id.into_into_dart().into_dart(),
+            ]
+            .into_dart(),
+            crate::api::models::VocabSource::Pdf { doc_id, page_index } => [
+                1.into_dart(),
+                doc_id.into_into_dart().into_dart(),
+                page_index.into_into_dart().into_dart(),
+            ]
+            .into_dart(),
+            _ => {
+                unimplemented!("");
+            }
+        }
+    }
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive
+    for crate::api::models::VocabSource
+{
+}
+impl flutter_rust_bridge::IntoIntoDart<crate::api::models::VocabSource>
+    for crate::api::models::VocabSource
+{
+    fn into_into_dart(self) -> crate::api::models::VocabSource {
+        self
+    }
+}
+// Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart for crate::api::models::VocabSourceFilter {
+    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+        match self {
+            crate::api::models::VocabSourceFilter::PaperBook { book_id } => {
+                [0.into_dart(), book_id.into_into_dart().into_dart()].into_dart()
+            }
+            crate::api::models::VocabSourceFilter::PdfDoc { doc_id } => {
+                [1.into_dart(), doc_id.into_into_dart().into_dart()].into_dart()
+            }
+            crate::api::models::VocabSourceFilter::All => [2.into_dart()].into_dart(),
+            _ => {
+                unimplemented!("");
+            }
+        }
+    }
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive
+    for crate::api::models::VocabSourceFilter
+{
+}
+impl flutter_rust_bridge::IntoIntoDart<crate::api::models::VocabSourceFilter>
+    for crate::api::models::VocabSourceFilter
+{
+    fn into_into_dart(self) -> crate::api::models::VocabSourceFilter {
+        self
+    }
+}
+
+impl SseEncode for ReqwestChatClient {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <RustOpaqueMoi<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<ReqwestChatClient>>>::sse_encode(flutter_rust_bridge::for_generated::rust_auto_opaque_encode::<_, MoiArc<_>>(self), serializer);
+    }
+}
 
 impl SseEncode for std::collections::HashMap<String, String> {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
         <Vec<(String, String)>>::sse_encode(self.into_iter().collect(), serializer);
+    }
+}
+
+impl SseEncode
+    for RustOpaqueMoi<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<ReqwestChatClient>>
+{
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        let (ptr, size) = self.sse_encode_raw();
+        <usize>::sse_encode(ptr, serializer);
+        <i32>::sse_encode(size, serializer);
     }
 }
 
@@ -1619,6 +2745,16 @@ impl SseEncode for Vec<crate::api::models::PdfDoc> {
     }
 }
 
+impl SseEncode for Vec<crate::api::models::PdfNote> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <i32>::sse_encode(self.len() as _, serializer);
+        for item in self {
+            <crate::api::models::PdfNote>::sse_encode(item, serializer);
+        }
+    }
+}
+
 impl SseEncode for Vec<u8> {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
@@ -1635,6 +2771,26 @@ impl SseEncode for Vec<(String, String)> {
         <i32>::sse_encode(self.len() as _, serializer);
         for item in self {
             <(String, String)>::sse_encode(item, serializer);
+        }
+    }
+}
+
+impl SseEncode for Vec<crate::api::models::VocabEncounter> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <i32>::sse_encode(self.len() as _, serializer);
+        for item in self {
+            <crate::api::models::VocabEncounter>::sse_encode(item, serializer);
+        }
+    }
+}
+
+impl SseEncode for Vec<crate::api::models::VocabEntry> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <i32>::sse_encode(self.len() as _, serializer);
+        for item in self {
+            <crate::api::models::VocabEntry>::sse_encode(item, serializer);
         }
     }
 }
@@ -1800,6 +2956,29 @@ impl SseEncode for crate::api::models::PdfManualMarkdownData {
     }
 }
 
+impl SseEncode for crate::api::models::PdfNote {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <String>::sse_encode(self.id, serializer);
+        <String>::sse_encode(self.doc_id, serializer);
+        <i32>::sse_encode(self.page_index, serializer);
+        <String>::sse_encode(self.selected_text, serializer);
+        <String>::sse_encode(self.selected_sentence, serializer);
+        <String>::sse_encode(self.content, serializer);
+        <Vec<String>>::sse_encode(self.tags, serializer);
+        <String>::sse_encode(self.created_at, serializer);
+        <String>::sse_encode(self.updated_at, serializer);
+    }
+}
+
+impl SseEncode for crate::api::models::PdfNotesData {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <u32>::sse_encode(self.version, serializer);
+        <Vec<crate::api::models::PdfNote>>::sse_encode(self.notes, serializer);
+    }
+}
+
 impl SseEncode for (String, String) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
@@ -1857,6 +3036,143 @@ impl SseEncode for () {
     fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {}
 }
 
+impl SseEncode for usize {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        serializer
+            .cursor
+            .write_u64::<NativeEndian>(self as _)
+            .unwrap();
+    }
+}
+
+impl SseEncode for crate::api::models::VocabData {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <u32>::sse_encode(self.version, serializer);
+        <Vec<crate::api::models::VocabEntry>>::sse_encode(self.entries, serializer);
+    }
+}
+
+impl SseEncode for crate::api::models::VocabEncounter {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <String>::sse_encode(self.id, serializer);
+        <String>::sse_encode(self.selected_text, serializer);
+        <String>::sse_encode(self.sentence, serializer);
+        <crate::api::models::VocabSource>::sse_encode(self.source, serializer);
+        <u32>::sse_encode(self.lookup_count, serializer);
+        <String>::sse_encode(self.first_seen, serializer);
+        <String>::sse_encode(self.last_seen, serializer);
+    }
+}
+
+impl SseEncode for crate::api::models::VocabEntry {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <String>::sse_encode(self.lemma, serializer);
+        <String>::sse_encode(self.language, serializer);
+        <Vec<String>>::sse_encode(self.surface_forms, serializer);
+        <String>::sse_encode(self.definition, serializer);
+        <bool>::sse_encode(self.definition_edited, serializer);
+        <Vec<crate::api::models::VocabEncounter>>::sse_encode(self.encounters, serializer);
+        <String>::sse_encode(self.created_at, serializer);
+        <String>::sse_encode(self.updated_at, serializer);
+    }
+}
+
+impl SseEncode for crate::api::models::VocabError {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        match self {
+            crate::api::models::VocabError::NetworkError(field0) => {
+                <i32>::sse_encode(0, serializer);
+                <String>::sse_encode(field0, serializer);
+            }
+            crate::api::models::VocabError::TimeoutError => {
+                <i32>::sse_encode(1, serializer);
+            }
+            crate::api::models::VocabError::ApiKeyError => {
+                <i32>::sse_encode(2, serializer);
+            }
+            crate::api::models::VocabError::RateLimitError => {
+                <i32>::sse_encode(3, serializer);
+            }
+            crate::api::models::VocabError::InvalidSelection(field0) => {
+                <i32>::sse_encode(4, serializer);
+                <String>::sse_encode(field0, serializer);
+            }
+            crate::api::models::VocabError::ParseError(field0) => {
+                <i32>::sse_encode(5, serializer);
+                <String>::sse_encode(field0, serializer);
+            }
+            crate::api::models::VocabError::StorageError(field0) => {
+                <i32>::sse_encode(6, serializer);
+                <String>::sse_encode(field0, serializer);
+            }
+            crate::api::models::VocabError::UnknownError(field0) => {
+                <i32>::sse_encode(7, serializer);
+                <String>::sse_encode(field0, serializer);
+            }
+            _ => {
+                unimplemented!("");
+            }
+        }
+    }
+}
+
+impl SseEncode for crate::api::models::VocabLookupResult {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <crate::api::models::VocabEntry>::sse_encode(self.entry, serializer);
+        <String>::sse_encode(self.encounter_id, serializer);
+        <bool>::sse_encode(self.cache_hit, serializer);
+    }
+}
+
+impl SseEncode for crate::api::models::VocabSource {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        match self {
+            crate::api::models::VocabSource::Paper { book_id, page_id } => {
+                <i32>::sse_encode(0, serializer);
+                <String>::sse_encode(book_id, serializer);
+                <String>::sse_encode(page_id, serializer);
+            }
+            crate::api::models::VocabSource::Pdf { doc_id, page_index } => {
+                <i32>::sse_encode(1, serializer);
+                <String>::sse_encode(doc_id, serializer);
+                <i32>::sse_encode(page_index, serializer);
+            }
+            _ => {
+                unimplemented!("");
+            }
+        }
+    }
+}
+
+impl SseEncode for crate::api::models::VocabSourceFilter {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        match self {
+            crate::api::models::VocabSourceFilter::PaperBook { book_id } => {
+                <i32>::sse_encode(0, serializer);
+                <String>::sse_encode(book_id, serializer);
+            }
+            crate::api::models::VocabSourceFilter::PdfDoc { doc_id } => {
+                <i32>::sse_encode(1, serializer);
+                <String>::sse_encode(doc_id, serializer);
+            }
+            crate::api::models::VocabSourceFilter::All => {
+                <i32>::sse_encode(2, serializer);
+            }
+            _ => {
+                unimplemented!("");
+            }
+        }
+    }
+}
+
 #[cfg(not(target_family = "wasm"))]
 mod io {
     // This file is automatically generated, so please do not edit it.
@@ -1865,6 +3181,8 @@ mod io {
     // Section: imports
 
     use super::*;
+    use crate::api::vocab::MistralChatClient;
+    use crate::api::vocab::*;
     use flutter_rust_bridge::for_generated::byteorder::{
         NativeEndian, ReadBytesExt, WriteBytesExt,
     };
@@ -1874,6 +3192,20 @@ mod io {
     // Section: boilerplate
 
     flutter_rust_bridge::frb_generated_boilerplate_io!();
+
+    #[unsafe(no_mangle)]
+    pub extern "C" fn frbgen_brrk_rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerReqwestChatClient(
+        ptr: *const std::ffi::c_void,
+    ) {
+        MoiArc::<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<ReqwestChatClient>>::increment_strong_count(ptr as _);
+    }
+
+    #[unsafe(no_mangle)]
+    pub extern "C" fn frbgen_brrk_rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerReqwestChatClient(
+        ptr: *const std::ffi::c_void,
+    ) {
+        MoiArc::<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<ReqwestChatClient>>::decrement_strong_count(ptr as _);
+    }
 }
 #[cfg(not(target_family = "wasm"))]
 pub use io::*;
@@ -1887,6 +3219,8 @@ mod web {
     // Section: imports
 
     use super::*;
+    use crate::api::vocab::MistralChatClient;
+    use crate::api::vocab::*;
     use flutter_rust_bridge::for_generated::byteorder::{
         NativeEndian, ReadBytesExt, WriteBytesExt,
     };
@@ -1898,6 +3232,20 @@ mod web {
     // Section: boilerplate
 
     flutter_rust_bridge::frb_generated_boilerplate_web!();
+
+    #[wasm_bindgen]
+    pub fn rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerReqwestChatClient(
+        ptr: *const std::ffi::c_void,
+    ) {
+        MoiArc::<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<ReqwestChatClient>>::increment_strong_count(ptr as _);
+    }
+
+    #[wasm_bindgen]
+    pub fn rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerReqwestChatClient(
+        ptr: *const std::ffi::c_void,
+    ) {
+        MoiArc::<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<ReqwestChatClient>>::decrement_strong_count(ptr as _);
+    }
 }
 #[cfg(target_family = "wasm")]
 pub use web::*;

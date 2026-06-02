@@ -623,3 +623,155 @@ mod tests {
         assert!(validate_relative_path("images\\photo.jpg").is_err());
     }
 }
+
+// ---------------------------------------------------------------------------
+// PDF notes (F17)
+// ---------------------------------------------------------------------------
+
+/// A note attached to a specific PDF page.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PdfNote {
+    pub id: String,
+    pub doc_id: String,
+    /// 0-based page index.
+    pub page_index: i32,
+    /// The text that was selected when the note was created.
+    #[serde(default)]
+    pub selected_text: String,
+    /// Sentence containing the selected text.
+    #[serde(default)]
+    pub selected_sentence: String,
+    /// User-authored text content.
+    pub content: String,
+    /// Optional tag strings.
+    #[serde(default)]
+    pub tags: Vec<String>,
+    pub created_at: String,
+    pub updated_at: String,
+}
+
+/// Container for all PDF notes.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PdfNotesData {
+    pub version: u32,
+    #[serde(default)]
+    pub notes: Vec<PdfNote>,
+}
+
+impl Default for PdfNotesData {
+    fn default() -> Self {
+        Self {
+            version: 1,
+            notes: Vec::new(),
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Vocabulary (F18)
+// ---------------------------------------------------------------------------
+
+/// Errors for vocabulary lookup operations.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub enum VocabError {
+    NetworkError(String),
+    TimeoutError,
+    ApiKeyError,
+    RateLimitError,
+    InvalidSelection(String),
+    ParseError(String),
+    StorageError(String),
+    UnknownError(String),
+}
+
+impl std::fmt::Display for VocabError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            VocabError::NetworkError(s) => write!(f, "Vocabulary network error: {s}"),
+            VocabError::TimeoutError => write!(f, "Vocabulary request timed out"),
+            VocabError::ApiKeyError => write!(f, "Mistral API key is missing or invalid"),
+            VocabError::RateLimitError => write!(f, "Mistral rate limit reached"),
+            VocabError::InvalidSelection(s) => write!(f, "Invalid selection: {s}"),
+            VocabError::ParseError(s) => write!(f, "Vocabulary parse error: {s}"),
+            VocabError::StorageError(s) => write!(f, "Vocabulary storage error: {s}"),
+            VocabError::UnknownError(s) => write!(f, "Vocabulary unknown error: {s}"),
+        }
+    }
+}
+
+impl std::error::Error for VocabError {}
+
+/// Source location for a vocabulary encounter.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub enum VocabSource {
+    Paper { book_id: String, page_id: String },
+    Pdf { doc_id: String, page_index: i32 },
+}
+
+/// One lookup instance for a vocabulary entry.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct VocabEncounter {
+    pub id: String,
+    pub selected_text: String,
+    #[serde(default)]
+    pub sentence: String,
+    pub source: VocabSource,
+    pub lookup_count: u32,
+    pub first_seen: String,
+    pub last_seen: String,
+}
+
+/// One vocabulary entry. Stable per `(language, lemma)`.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct VocabEntry {
+    pub lemma: String,
+    pub language: String, // "en" or "ja"
+    #[serde(default)]
+    pub surface_forms: Vec<String>,
+    pub definition: String,
+    #[serde(default)]
+    pub definition_edited: bool,
+    #[serde(default)]
+    pub encounters: Vec<VocabEncounter>,
+    pub created_at: String,
+    pub updated_at: String,
+}
+
+impl VocabEntry {
+    /// Sum of all encounter lookup counts.
+    pub fn total_lookup_count(&self) -> u32 {
+        self.encounters.iter().map(|e| e.lookup_count).sum()
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct VocabData {
+    pub version: u32,
+    #[serde(default)]
+    pub entries: Vec<VocabEntry>,
+}
+
+impl Default for VocabData {
+    fn default() -> Self {
+        Self {
+            version: 1,
+            entries: Vec::new(),
+        }
+    }
+}
+
+/// Filter for listing vocabulary entries by source.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub enum VocabSourceFilter {
+    PaperBook { book_id: String },
+    PdfDoc { doc_id: String },
+    All,
+}
+
+/// Result of a vocabulary lookup operation.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct VocabLookupResult {
+    pub entry: VocabEntry,
+    pub encounter_id: String,
+    pub cache_hit: bool,
+}

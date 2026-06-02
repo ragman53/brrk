@@ -10,7 +10,7 @@ part 'models.freezed.dart';
 
 // These functions are ignored because they are not marked as `pub`: `validate_relative_path`
 // These types are ignored because they are neither used by any `pub` functions nor (for structs and enums) marked `#[frb(unignore)]`: `CacheRecord`
-// These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `assert_fields_are_eq`, `assert_fields_are_eq`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `eq`, `eq`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `from`
+// These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `assert_fields_are_eq`, `assert_fields_are_eq`, `assert_fields_are_eq`, `assert_fields_are_eq`, `assert_fields_are_eq`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `eq`, `eq`, `eq`, `eq`, `eq`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `from`
 
 /// A note attached to a specific page.
 class Note {
@@ -379,6 +379,90 @@ class PdfManualMarkdownData {
           pages == other.pages;
 }
 
+/// A note attached to a specific PDF page.
+class PdfNote {
+  final String id;
+  final String docId;
+
+  /// 0-based page index.
+  final int pageIndex;
+
+  /// The text that was selected when the note was created.
+  final String selectedText;
+
+  /// Sentence containing the selected text.
+  final String selectedSentence;
+
+  /// User-authored text content.
+  final String content;
+
+  /// Optional tag strings.
+  final List<String> tags;
+  final String createdAt;
+  final String updatedAt;
+
+  const PdfNote({
+    required this.id,
+    required this.docId,
+    required this.pageIndex,
+    required this.selectedText,
+    required this.selectedSentence,
+    required this.content,
+    required this.tags,
+    required this.createdAt,
+    required this.updatedAt,
+  });
+
+  @override
+  int get hashCode =>
+      id.hashCode ^
+      docId.hashCode ^
+      pageIndex.hashCode ^
+      selectedText.hashCode ^
+      selectedSentence.hashCode ^
+      content.hashCode ^
+      tags.hashCode ^
+      createdAt.hashCode ^
+      updatedAt.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is PdfNote &&
+          runtimeType == other.runtimeType &&
+          id == other.id &&
+          docId == other.docId &&
+          pageIndex == other.pageIndex &&
+          selectedText == other.selectedText &&
+          selectedSentence == other.selectedSentence &&
+          content == other.content &&
+          tags == other.tags &&
+          createdAt == other.createdAt &&
+          updatedAt == other.updatedAt;
+}
+
+/// Container for all PDF notes.
+class PdfNotesData {
+  final int version;
+  final List<PdfNote> notes;
+
+  const PdfNotesData({required this.version, required this.notes});
+
+  static Future<PdfNotesData> default_() =>
+      RustLib.instance.api.crateApiModelsPdfNotesDataDefault();
+
+  @override
+  int get hashCode => version.hashCode ^ notes.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is PdfNotesData &&
+          runtimeType == other.runtimeType &&
+          version == other.version &&
+          notes == other.notes;
+}
+
 @freezed
 sealed class StorageError with _$StorageError implements FrbException {
   const StorageError._();
@@ -398,4 +482,189 @@ sealed class StorageError with _$StorageError implements FrbException {
   /// A validation check (e.g. path traversal) failed.
   const factory StorageError.validationError(String field0) =
       StorageError_ValidationError;
+}
+
+class VocabData {
+  final int version;
+  final List<VocabEntry> entries;
+
+  const VocabData({required this.version, required this.entries});
+
+  static Future<VocabData> default_() =>
+      RustLib.instance.api.crateApiModelsVocabDataDefault();
+
+  @override
+  int get hashCode => version.hashCode ^ entries.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is VocabData &&
+          runtimeType == other.runtimeType &&
+          version == other.version &&
+          entries == other.entries;
+}
+
+/// One lookup instance for a vocabulary entry.
+class VocabEncounter {
+  final String id;
+  final String selectedText;
+  final String sentence;
+  final VocabSource source;
+  final int lookupCount;
+  final String firstSeen;
+  final String lastSeen;
+
+  const VocabEncounter({
+    required this.id,
+    required this.selectedText,
+    required this.sentence,
+    required this.source,
+    required this.lookupCount,
+    required this.firstSeen,
+    required this.lastSeen,
+  });
+
+  @override
+  int get hashCode =>
+      id.hashCode ^
+      selectedText.hashCode ^
+      sentence.hashCode ^
+      source.hashCode ^
+      lookupCount.hashCode ^
+      firstSeen.hashCode ^
+      lastSeen.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is VocabEncounter &&
+          runtimeType == other.runtimeType &&
+          id == other.id &&
+          selectedText == other.selectedText &&
+          sentence == other.sentence &&
+          source == other.source &&
+          lookupCount == other.lookupCount &&
+          firstSeen == other.firstSeen &&
+          lastSeen == other.lastSeen;
+}
+
+/// One vocabulary entry. Stable per `(language, lemma)`.
+class VocabEntry {
+  final String lemma;
+  final String language;
+  final List<String> surfaceForms;
+  final String definition;
+  final bool definitionEdited;
+  final List<VocabEncounter> encounters;
+  final String createdAt;
+  final String updatedAt;
+
+  const VocabEntry({
+    required this.lemma,
+    required this.language,
+    required this.surfaceForms,
+    required this.definition,
+    required this.definitionEdited,
+    required this.encounters,
+    required this.createdAt,
+    required this.updatedAt,
+  });
+
+  /// Sum of all encounter lookup counts.
+  Future<int> totalLookupCount() =>
+      RustLib.instance.api.crateApiModelsVocabEntryTotalLookupCount(that: this);
+
+  @override
+  int get hashCode =>
+      lemma.hashCode ^
+      language.hashCode ^
+      surfaceForms.hashCode ^
+      definition.hashCode ^
+      definitionEdited.hashCode ^
+      encounters.hashCode ^
+      createdAt.hashCode ^
+      updatedAt.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is VocabEntry &&
+          runtimeType == other.runtimeType &&
+          lemma == other.lemma &&
+          language == other.language &&
+          surfaceForms == other.surfaceForms &&
+          definition == other.definition &&
+          definitionEdited == other.definitionEdited &&
+          encounters == other.encounters &&
+          createdAt == other.createdAt &&
+          updatedAt == other.updatedAt;
+}
+
+@freezed
+sealed class VocabError with _$VocabError implements FrbException {
+  const VocabError._();
+
+  const factory VocabError.networkError(String field0) =
+      VocabError_NetworkError;
+  const factory VocabError.timeoutError() = VocabError_TimeoutError;
+  const factory VocabError.apiKeyError() = VocabError_ApiKeyError;
+  const factory VocabError.rateLimitError() = VocabError_RateLimitError;
+  const factory VocabError.invalidSelection(String field0) =
+      VocabError_InvalidSelection;
+  const factory VocabError.parseError(String field0) = VocabError_ParseError;
+  const factory VocabError.storageError(String field0) =
+      VocabError_StorageError;
+  const factory VocabError.unknownError(String field0) =
+      VocabError_UnknownError;
+}
+
+/// Result of a vocabulary lookup operation.
+class VocabLookupResult {
+  final VocabEntry entry;
+  final String encounterId;
+  final bool cacheHit;
+
+  const VocabLookupResult({
+    required this.entry,
+    required this.encounterId,
+    required this.cacheHit,
+  });
+
+  @override
+  int get hashCode => entry.hashCode ^ encounterId.hashCode ^ cacheHit.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is VocabLookupResult &&
+          runtimeType == other.runtimeType &&
+          entry == other.entry &&
+          encounterId == other.encounterId &&
+          cacheHit == other.cacheHit;
+}
+
+@freezed
+sealed class VocabSource with _$VocabSource {
+  const VocabSource._();
+
+  const factory VocabSource.paper({
+    required String bookId,
+    required String pageId,
+  }) = VocabSource_Paper;
+  const factory VocabSource.pdf({
+    required String docId,
+    required int pageIndex,
+  }) = VocabSource_Pdf;
+}
+
+@freezed
+sealed class VocabSourceFilter with _$VocabSourceFilter {
+  const VocabSourceFilter._();
+
+  const factory VocabSourceFilter.paperBook({required String bookId}) =
+      VocabSourceFilter_PaperBook;
+  const factory VocabSourceFilter.pdfDoc({required String docId}) =
+      VocabSourceFilter_PdfDoc;
+  const factory VocabSourceFilter.all() = VocabSourceFilter_All;
 }

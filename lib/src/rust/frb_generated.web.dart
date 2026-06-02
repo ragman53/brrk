@@ -9,6 +9,7 @@
 import 'api/models.dart';
 import 'api/ocr.dart';
 import 'api/storage.dart';
+import 'api/vocab.dart';
 import 'dart:async';
 import 'dart:convert';
 import 'frb_generated.dart';
@@ -22,11 +23,36 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
     required super.portManager,
   });
 
+  CrossPlatformFinalizerArg
+  get rust_arc_decrement_strong_count_ReqwestChatClientPtr => wire
+      .rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerReqwestChatClient;
+
+  @protected
+  ReqwestChatClient
+  dco_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerReqwestChatClient(
+    dynamic raw,
+  );
+
+  @protected
+  ReqwestChatClient
+  dco_decode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerReqwestChatClient(
+    dynamic raw,
+  );
+
   @protected
   Map<String, String> dco_decode_Map_String_String_None(dynamic raw);
 
   @protected
+  ReqwestChatClient
+  dco_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerReqwestChatClient(
+    dynamic raw,
+  );
+
+  @protected
   String dco_decode_String(dynamic raw);
+
+  @protected
+  MistralChatClient dco_decode_TraitDef_MistralChatClient(dynamic raw);
 
   @protected
   bool dco_decode_bool(dynamic raw);
@@ -45,6 +71,21 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   PdfDoc dco_decode_box_autoadd_pdf_doc(dynamic raw);
+
+  @protected
+  PdfNote dco_decode_box_autoadd_pdf_note(dynamic raw);
+
+  @protected
+  VocabEncounter dco_decode_box_autoadd_vocab_encounter(dynamic raw);
+
+  @protected
+  VocabEntry dco_decode_box_autoadd_vocab_entry(dynamic raw);
+
+  @protected
+  VocabSource dco_decode_box_autoadd_vocab_source(dynamic raw);
+
+  @protected
+  VocabSourceFilter dco_decode_box_autoadd_vocab_source_filter(dynamic raw);
 
   @protected
   int dco_decode_i_32(dynamic raw);
@@ -68,10 +109,19 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   List<PdfDoc> dco_decode_list_pdf_doc(dynamic raw);
 
   @protected
+  List<PdfNote> dco_decode_list_pdf_note(dynamic raw);
+
+  @protected
   Uint8List dco_decode_list_prim_u_8_strict(dynamic raw);
 
   @protected
   List<(String, String)> dco_decode_list_record_string_string(dynamic raw);
+
+  @protected
+  List<VocabEncounter> dco_decode_list_vocab_encounter(dynamic raw);
+
+  @protected
+  List<VocabEntry> dco_decode_list_vocab_entry(dynamic raw);
 
   @protected
   Note dco_decode_note(dynamic raw);
@@ -110,6 +160,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   PdfManualMarkdownData dco_decode_pdf_manual_markdown_data(dynamic raw);
 
   @protected
+  PdfNote dco_decode_pdf_note(dynamic raw);
+
+  @protected
+  PdfNotesData dco_decode_pdf_notes_data(dynamic raw);
+
+  @protected
   (String, String) dco_decode_record_string_string(dynamic raw);
 
   @protected
@@ -125,7 +181,49 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   void dco_decode_unit(dynamic raw);
 
   @protected
+  BigInt dco_decode_usize(dynamic raw);
+
+  @protected
+  VocabData dco_decode_vocab_data(dynamic raw);
+
+  @protected
+  VocabEncounter dco_decode_vocab_encounter(dynamic raw);
+
+  @protected
+  VocabEntry dco_decode_vocab_entry(dynamic raw);
+
+  @protected
+  VocabError dco_decode_vocab_error(dynamic raw);
+
+  @protected
+  VocabLookupResult dco_decode_vocab_lookup_result(dynamic raw);
+
+  @protected
+  VocabSource dco_decode_vocab_source(dynamic raw);
+
+  @protected
+  VocabSourceFilter dco_decode_vocab_source_filter(dynamic raw);
+
+  @protected
+  ReqwestChatClient
+  sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerReqwestChatClient(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  ReqwestChatClient
+  sse_decode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerReqwestChatClient(
+    SseDeserializer deserializer,
+  );
+
+  @protected
   Map<String, String> sse_decode_Map_String_String_None(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  ReqwestChatClient
+  sse_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerReqwestChatClient(
     SseDeserializer deserializer,
   );
 
@@ -151,6 +249,25 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   PdfDoc sse_decode_box_autoadd_pdf_doc(SseDeserializer deserializer);
 
   @protected
+  PdfNote sse_decode_box_autoadd_pdf_note(SseDeserializer deserializer);
+
+  @protected
+  VocabEncounter sse_decode_box_autoadd_vocab_encounter(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  VocabEntry sse_decode_box_autoadd_vocab_entry(SseDeserializer deserializer);
+
+  @protected
+  VocabSource sse_decode_box_autoadd_vocab_source(SseDeserializer deserializer);
+
+  @protected
+  VocabSourceFilter sse_decode_box_autoadd_vocab_source_filter(
+    SseDeserializer deserializer,
+  );
+
+  @protected
   int sse_decode_i_32(SseDeserializer deserializer);
 
   @protected
@@ -172,12 +289,23 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   List<PdfDoc> sse_decode_list_pdf_doc(SseDeserializer deserializer);
 
   @protected
+  List<PdfNote> sse_decode_list_pdf_note(SseDeserializer deserializer);
+
+  @protected
   Uint8List sse_decode_list_prim_u_8_strict(SseDeserializer deserializer);
 
   @protected
   List<(String, String)> sse_decode_list_record_string_string(
     SseDeserializer deserializer,
   );
+
+  @protected
+  List<VocabEncounter> sse_decode_list_vocab_encounter(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  List<VocabEntry> sse_decode_list_vocab_entry(SseDeserializer deserializer);
 
   @protected
   Note sse_decode_note(SseDeserializer deserializer);
@@ -218,6 +346,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
+  PdfNote sse_decode_pdf_note(SseDeserializer deserializer);
+
+  @protected
+  PdfNotesData sse_decode_pdf_notes_data(SseDeserializer deserializer);
+
+  @protected
   (String, String) sse_decode_record_string_string(
     SseDeserializer deserializer,
   );
@@ -235,8 +369,57 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   void sse_decode_unit(SseDeserializer deserializer);
 
   @protected
+  BigInt sse_decode_usize(SseDeserializer deserializer);
+
+  @protected
+  VocabData sse_decode_vocab_data(SseDeserializer deserializer);
+
+  @protected
+  VocabEncounter sse_decode_vocab_encounter(SseDeserializer deserializer);
+
+  @protected
+  VocabEntry sse_decode_vocab_entry(SseDeserializer deserializer);
+
+  @protected
+  VocabError sse_decode_vocab_error(SseDeserializer deserializer);
+
+  @protected
+  VocabLookupResult sse_decode_vocab_lookup_result(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  VocabSource sse_decode_vocab_source(SseDeserializer deserializer);
+
+  @protected
+  VocabSourceFilter sse_decode_vocab_source_filter(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  void
+  sse_encode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerReqwestChatClient(
+    ReqwestChatClient self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void
+  sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerReqwestChatClient(
+    ReqwestChatClient self,
+    SseSerializer serializer,
+  );
+
+  @protected
   void sse_encode_Map_String_String_None(
     Map<String, String> self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void
+  sse_encode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerReqwestChatClient(
+    ReqwestChatClient self,
     SseSerializer serializer,
   );
 
@@ -268,6 +451,33 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   void sse_encode_box_autoadd_pdf_doc(PdfDoc self, SseSerializer serializer);
 
   @protected
+  void sse_encode_box_autoadd_pdf_note(PdfNote self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_box_autoadd_vocab_encounter(
+    VocabEncounter self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_box_autoadd_vocab_entry(
+    VocabEntry self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_box_autoadd_vocab_source(
+    VocabSource self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_box_autoadd_vocab_source_filter(
+    VocabSourceFilter self,
+    SseSerializer serializer,
+  );
+
+  @protected
   void sse_encode_i_32(int self, SseSerializer serializer);
 
   @protected
@@ -295,6 +505,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   void sse_encode_list_pdf_doc(List<PdfDoc> self, SseSerializer serializer);
 
   @protected
+  void sse_encode_list_pdf_note(List<PdfNote> self, SseSerializer serializer);
+
+  @protected
   void sse_encode_list_prim_u_8_strict(
     Uint8List self,
     SseSerializer serializer,
@@ -303,6 +516,18 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   @protected
   void sse_encode_list_record_string_string(
     List<(String, String)> self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_list_vocab_encounter(
+    List<VocabEncounter> self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_list_vocab_entry(
+    List<VocabEntry> self,
     SseSerializer serializer,
   );
 
@@ -349,6 +574,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
+  void sse_encode_pdf_note(PdfNote self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_pdf_notes_data(PdfNotesData self, SseSerializer serializer);
+
+  @protected
   void sse_encode_record_string_string(
     (String, String) self,
     SseSerializer serializer,
@@ -365,12 +596,61 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   void sse_encode_unit(void self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_usize(BigInt self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_vocab_data(VocabData self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_vocab_encounter(
+    VocabEncounter self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_vocab_entry(VocabEntry self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_vocab_error(VocabError self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_vocab_lookup_result(
+    VocabLookupResult self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_vocab_source(VocabSource self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_vocab_source_filter(
+    VocabSourceFilter self,
+    SseSerializer serializer,
+  );
 }
 
 // Section: wire_class
 
 class RustLibWire implements BaseWire {
   RustLibWire.fromExternalLibrary(ExternalLibrary lib);
+
+  void
+  rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerReqwestChatClient(
+    int ptr,
+  ) => wasmModule
+      .rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerReqwestChatClient(
+        ptr,
+      );
+
+  void
+  rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerReqwestChatClient(
+    int ptr,
+  ) => wasmModule
+      .rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerReqwestChatClient(
+        ptr,
+      );
 }
 
 @JS('wasm_bindgen')
@@ -378,4 +658,14 @@ external RustLibWasmModule get wasmModule;
 
 @JS()
 @anonymous
-extension type RustLibWasmModule._(JSObject _) implements JSObject {}
+extension type RustLibWasmModule._(JSObject _) implements JSObject {
+  external void
+  rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerReqwestChatClient(
+    int ptr,
+  );
+
+  external void
+  rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerReqwestChatClient(
+    int ptr,
+  );
+}

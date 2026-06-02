@@ -7,6 +7,8 @@ import '../frb_generated.dart';
 import 'models.dart';
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 
+// These functions are ignored because they are not marked as `pub`: `_vocab_marker`
+
 /// Must be called once at app start with the application's data directory path.
 /// Creates required subdirectories if missing.
 void initApp({required String dataDir}) =>
@@ -107,4 +109,89 @@ Future<void> savePdfPageManualMarkdown({
   docId: docId,
   pageIndex: pageIndex,
   manualMarkdown: manualMarkdown,
+);
+
+/// Saves or updates a note attached to a specific PDF page.
+Future<void> savePdfNote({required PdfNote note}) =>
+    RustLib.instance.api.crateApiStorageSavePdfNote(note: note);
+
+/// Returns PDF notes for a doc, optionally filtered by 0-based page index.
+Future<List<PdfNote>> getPdfNotes({required String docId, int? pageIndex}) =>
+    RustLib.instance.api.crateApiStorageGetPdfNotes(
+      docId: docId,
+      pageIndex: pageIndex,
+    );
+
+/// Deletes a note from a PDF.
+Future<void> deletePdfNote({required String docId, required String noteId}) =>
+    RustLib.instance.api.crateApiStorageDeletePdfNote(
+      docId: docId,
+      noteId: noteId,
+    );
+
+/// Returns all vocabulary entries, optionally filtered by source.
+Future<List<VocabEntry>> listVocabulary({
+  required VocabSourceFilter sourceFilter,
+}) => RustLib.instance.api.crateApiStorageListVocabulary(
+  sourceFilter: sourceFilter,
+);
+
+/// Edits the definition for an existing vocabulary entry and sets the
+/// `definition_edited` flag.
+Future<void> updateVocabularyDefinition({
+  required String language,
+  required String lemma,
+  required String definition,
+}) => RustLib.instance.api.crateApiStorageUpdateVocabularyDefinition(
+  language: language,
+  lemma: lemma,
+  definition: definition,
+);
+
+/// Deletes a vocabulary entry and all of its encounters.
+Future<void> deleteVocabularyEntry({
+  required String language,
+  required String lemma,
+}) => RustLib.instance.api.crateApiStorageDeleteVocabularyEntry(
+  language: language,
+  lemma: lemma,
+);
+
+/// Deletes one encounter from a vocabulary entry. If the entry has no
+/// encounters left, the entry itself is deleted.
+Future<void> deleteVocabularyEncounter({
+  required String language,
+  required String lemma,
+  required String encounterId,
+}) => RustLib.instance.api.crateApiStorageDeleteVocabularyEncounter(
+  language: language,
+  lemma: lemma,
+  encounterId: encounterId,
+);
+
+/// Persists a vocabulary lookup result (new entry or merge into existing).
+Future<VocabLookupResult> saveVocabularyLookup({
+  required VocabEntry entry,
+  required VocabEncounter encounter,
+}) => RustLib.instance.api.crateApiStorageSaveVocabularyLookup(
+  entry: entry,
+  encounter: encounter,
+);
+
+/// FRB wrapper: vocabulary lookup that calls Mistral Chat.
+/// Implementation lives in `crate::api::vocab::lookup_vocabulary`.
+Future<VocabLookupResult> lookupVocabulary({
+  required String apiKey,
+  required String selectedText,
+  required String pageContext,
+  int? selectionStart,
+  int? selectionEnd,
+  required VocabSource source,
+}) => RustLib.instance.api.crateApiStorageLookupVocabulary(
+  apiKey: apiKey,
+  selectedText: selectedText,
+  pageContext: pageContext,
+  selectionStart: selectionStart,
+  selectionEnd: selectionEnd,
+  source: source,
 );
