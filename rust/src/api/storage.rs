@@ -3,7 +3,10 @@
 //! All functions require `init_app(data_dir)` to have been called first,
 //! otherwise they return `StorageError::NotInitialized`.
 
-use crate::{Note, PaperBook, PaperBooksData, PaperPage, PdfDoc, PdfDocsData, StorageError};
+use crate::{
+    Note, PaperBook, PaperBooksData, PaperPage, PdfDoc, PdfDocsData, PdfManualMarkdownData,
+    StorageError,
+};
 
 /// Must be called once at app start with the application's data directory path.
 /// Creates required subdirectories if missing.
@@ -79,4 +82,36 @@ pub fn delete_pdf_doc(doc_id: String) -> Result<(), StorageError> {
 /// Clears all OCR cache entries and returns the total count removed.
 pub fn clear_ocr_cache() -> Result<u32, StorageError> {
     crate::api::store::clear_ocr_cache()
+}
+
+/// Persists a manual Markdown override for a paper page.
+/// `None` or whitespace clears the override.
+pub fn save_paper_page_manual_markdown(
+    book_id: String,
+    page_id: String,
+    manual_markdown: Option<String>,
+    updated_at: String,
+) -> Result<(), StorageError> {
+    crate::api::store::save_paper_page_manual_markdown(
+        book_id,
+        page_id,
+        manual_markdown,
+        updated_at,
+    )
+}
+
+/// Returns all manual Markdown overrides for a PDF. Returns an empty struct
+/// if no manual file exists yet.
+pub fn get_pdf_manual_markdown(doc_id: String) -> Result<PdfManualMarkdownData, StorageError> {
+    crate::api::store::get_pdf_manual_markdown(doc_id)
+}
+
+/// Persists or clears a manual Markdown override for one PDF page.
+/// `page_index` is 0-based. `None` or whitespace clears the override.
+pub fn save_pdf_page_manual_markdown(
+    doc_id: String,
+    page_index: i32,
+    manual_markdown: Option<String>,
+) -> Result<(), StorageError> {
+    crate::api::store::save_pdf_page_manual_markdown(doc_id, page_index, manual_markdown)
 }

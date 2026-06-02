@@ -29,6 +29,12 @@ const FILE_CACHE_PDF: &str = "cache_pdf.json";
 
 const SUBDIRS: &[&str] = &["images", "pdfs", "markdowns", "covers"];
 
+/// Subdir for PDF per-doc assets (manual overrides live here).
+const PDF_DOC_SUBDIR: &str = "pdf";
+
+/// Maximum length of a manual Markdown override in Unicode characters.
+pub(crate) const MAX_MANUAL_MARKDOWN_LEN: usize = 10_000;
+
 /// Serializes JSON read-modify-write operations to prevent lost updates when
 /// multiple FRB calls touch the same metadata/cache file concurrently.
 static STORAGE_LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
@@ -166,6 +172,32 @@ where
     write_json_atomic(path, &data)
 }
 
+/// Atomically reads (or defaults if missing), applies `f`, and writes back.
+///
+/// Unlike `update_json_file`, this does not return `NotFound` when the file
+/// is missing; instead it starts from `default` and writes the file on first
+/// mutation. Used for per-PDF sidecar files that may not exist yet.
+fn update_json_file_or_default<T, F>(
+    path: std::path::PathBuf,
+    default: T,
+    f: F,
+) -> Result<(), StorageError>
+where
+    for<'de> T: serde::Serialize + serde::Deserialize<'de>,
+    F: FnOnce(&mut T) -> Result<(), StorageError>,
+{
+    let _guard = STORAGE_LOCK
+        .lock()
+        .map_err(|_| StorageError::IoError("storage lock poisoned".to_string()))?;
+    let mut data: T = if path.exists() {
+        read_json(&path)?
+    } else {
+        default
+    };
+    f(&mut data)?;
+    write_json_atomic(path, &data)
+}
+
 // ---------------------------------------------------------------------------
 // Paper books
 // ---------------------------------------------------------------------------
@@ -285,6 +317,13 @@ pub(crate) fn delete_pdf_doc(doc_id: String) -> Result<(), StorageError> {
         let _ = fs::remove_file(data_dir.join(&m));
     }
 
+    // Step 3b: best-effort delete per-PDF manual override file (F16).
+    let manual_path = data_dir
+        .join(PDF_DOC_SUBDIR)
+        .join(&doc_id)
+        .join("manual.json");
+    let _ = fs::remove_file(manual_path);
+
     // Step 4: collect surviving PDF doc hashes
     let surviving_hashes: std::collections::HashSet<String> = {
         let path = data_dir.join(FILE_PDF_DOCS);
@@ -304,6 +343,164 @@ pub(crate) fn delete_pdf_doc(doc_id: String) -> Result<(), StorageError> {
     }
 
     Ok(())
+}
+
+// ---------------------------------------------------------------------------
+// Manual Markdown (F16)
+// ---------------------------------------------------------------------------
+
+/// Returns the manual Markdown override for a paper page, or `None`.
+fn normalize_manual_markdown(value: Option<String>) -> Option<String> {
+    value.and_then(|s| if s.trim().is_empty() { None } else { Some(s) })
+}
+
+/// Validates that `text` does not exceed the manual Markdown char limit.
+fn validate_manual_markdown_len(text: &str) -> Result<(), StorageError> {
+    if text.chars().count() > MAX_MANUAL_MARKDOWN_LEN {
+        return Err(StorageError::ValidationError(format!(
+            "manual markdown exceeds maximum length of {} characters",
+            MAX_MANUAL_MARKDOWN_LEN
+        )));
+    }
+    Ok(())
+}
+
+/// Persists a manual Markdown override for one paper page.
+///
+/// `manual_markdown` semantics:
+/// - `None`: clears the override.
+/// - `Some(text)`: stored as-is, but only if `text` is non-empty after trim.
+///   Whitespace-only input is treated as a clear.
+///
+/// Errors: `ValidationError` for length / id issues, `NotFound` if the page
+/// or book is unknown.
+pub(crate) fn save_paper_page_manual_markdown(
+    book_id: String,
+    page_id: String,
+    manual_markdown: Option<String>,
+    updated_at: String,
+) -> Result<(), StorageError> {
+    validate_storage_id("book id", &book_id)?;
+    validate_storage_id("page id", &page_id)?;
+    validate_updated_at(&updated_at)?;
+
+    let normalized = normalize_manual_markdown(manual_markdown);
+    if let Some(ref s) = normalized {
+        validate_manual_markdown_len(s)?;
+    }
+
+    let data_dir = app::data_dir().ok_or(StorageError::NotInitialized)?;
+    let path = data_dir.join(FILE_PAPER_BOOKS);
+
+    update_json_file(path, |data: &mut PaperBooksData| {
+        let book = data
+            .books
+            .iter_mut()
+            .find(|b| b.id == book_id)
+            .ok_or_else(|| StorageError::NotFound(format!("book_id '{}' not found", book_id)))?;
+
+        let page = book
+            .pages
+            .iter_mut()
+            .find(|p| p.id == page_id)
+            .ok_or_else(|| {
+                StorageError::NotFound(format!(
+                    "page_id '{}' not found in book '{}'",
+                    page_id, book_id
+                ))
+            })?;
+
+        page.manual_markdown = normalized;
+        book.updated_at = updated_at.clone();
+        Ok(())
+    })
+}
+
+/// Returns all manual Markdown overrides for a PDF, or an empty struct if no
+/// manual file exists yet.
+pub(crate) fn get_pdf_manual_markdown(
+    doc_id: String,
+) -> Result<crate::PdfManualMarkdownData, StorageError> {
+    validate_storage_id("doc id", &doc_id)?;
+    let data_dir = app::data_dir().ok_or(StorageError::NotInitialized)?;
+    let path = data_dir
+        .join(PDF_DOC_SUBDIR)
+        .join(&doc_id)
+        .join("manual.json");
+    if !path.exists() {
+        return Ok(crate::PdfManualMarkdownData::default());
+    }
+    let data: crate::PdfManualMarkdownData = read_json(&path)?;
+    if data.version != 1 {
+        return Err(StorageError::ValidationError(format!(
+            "unsupported manual markdown version {}",
+            data.version
+        )));
+    }
+    Ok(data)
+}
+
+/// Persists (or clears) a manual Markdown override for one PDF page.
+///
+/// `page_index` is 0-based. `None` or whitespace-only `manual_markdown`
+/// removes the override for the page.
+///
+/// Errors: `ValidationError` for id / index / length issues, `NotFound` if
+/// the PDF doc is unknown.
+pub(crate) fn save_pdf_page_manual_markdown(
+    doc_id: String,
+    page_index: i32,
+    manual_markdown: Option<String>,
+) -> Result<(), StorageError> {
+    validate_storage_id("doc id", &doc_id)?;
+    if page_index < 0 {
+        return Err(StorageError::ValidationError(format!(
+            "page_index must be non-negative, got {}",
+            page_index
+        )));
+    }
+
+    let normalized = normalize_manual_markdown(manual_markdown);
+    if let Some(ref s) = normalized {
+        validate_manual_markdown_len(s)?;
+    }
+
+    let data_dir = app::data_dir().ok_or(StorageError::NotInitialized)?;
+
+    // Validate doc exists and page_index is within page_count.
+    {
+        let docs_path = data_dir.join(FILE_PDF_DOCS);
+        let docs: PdfDocsData = read_json(&docs_path)?;
+        let doc = docs
+            .docs
+            .iter()
+            .find(|d| d.id == doc_id)
+            .ok_or_else(|| StorageError::NotFound(format!("doc_id '{}' not found", doc_id)))?;
+        if page_index >= doc.page_count {
+            return Err(StorageError::ValidationError(format!(
+                "page_index {} out of range (doc has {} pages)",
+                page_index, doc.page_count
+            )));
+        }
+    }
+
+    let path = data_dir
+        .join(PDF_DOC_SUBDIR)
+        .join(&doc_id)
+        .join("manual.json");
+    let key = page_index.to_string();
+
+    update_json_file_or_default(path, crate::PdfManualMarkdownData::default(), |data| {
+        match &normalized {
+            Some(text) => {
+                data.pages.insert(key.clone(), text.clone());
+            }
+            None => {
+                data.pages.remove(&key);
+            }
+        }
+        Ok(())
+    })
 }
 
 // ---------------------------------------------------------------------------
@@ -1096,6 +1293,7 @@ mod tests {
                     image_path: "../etc/passwd".into(),
                     ocr_hash: "sha256:abc".into(),
                     markdown: "".into(),
+                    manual_markdown: None,
                     notes: vec![],
                     page_label: None,
                 }],
@@ -1234,6 +1432,7 @@ mod tests {
                     image_path: "images/book-1/page-1.jpg".into(),
                     ocr_hash: "sha256:abc".into(),
                     markdown: "# Hello".into(),
+                    manual_markdown: None,
                     notes: vec![],
                     page_label: None,
                 }],
@@ -1275,6 +1474,7 @@ mod tests {
                     image_path: "images/book-1/page-1.jpg".into(),
                     ocr_hash: "sha256:abc".into(),
                     markdown: "# Hello".into(),
+                    manual_markdown: None,
                     notes: vec![Note {
                         id: "note-1".into(),
                         page_id: "page-1".into(),
@@ -1394,6 +1594,7 @@ mod tests {
                     image_path: "images/book-1/page-1.jpg".into(),
                     ocr_hash: "sha256:abc".into(),
                     markdown: "# Test".into(),
+                    manual_markdown: None,
                     notes: vec![],
                     page_label: None,
                 }],
@@ -1474,6 +1675,7 @@ mod tests {
                     image_path: "images/book-1/page-1.jpg".into(),
                     ocr_hash: "sha256:abc".into(),
                     markdown: "# Test".into(),
+                    manual_markdown: None,
                     notes: vec![],
                     page_label: None,
                 }],
@@ -1779,6 +1981,7 @@ mod tests {
                 page_label: None,
                 ocr_hash: "sha256:abc".into(),
                 markdown: "Page text".into(),
+                manual_markdown: None,
                 notes: vec![],
             };
             upsert_paper_page("book-1".into(), page, "2026-05-20T01:00:00Z".into()).unwrap();
@@ -1809,6 +2012,7 @@ mod tests {
                     page_label: None,
                     ocr_hash: "sha256:abc".into(),
                     markdown: "Original".into(),
+                    manual_markdown: None,
                     notes: vec![],
                 }],
             };
@@ -1820,6 +2024,7 @@ mod tests {
                 page_label: Some("42".into()),
                 ocr_hash: "sha256:abc".into(),
                 markdown: "Updated".into(),
+                manual_markdown: None,
                 notes: vec![],
             };
             upsert_paper_page("book-1".into(), page, "2026-05-20T02:00:00Z".into()).unwrap();
@@ -1854,6 +2059,7 @@ mod tests {
                 page_label: Some("  42  ".into()),
                 ocr_hash: "sha256:abc".into(),
                 markdown: "Text".into(),
+                manual_markdown: None,
                 notes: vec![],
             };
             upsert_paper_page("book-1".into(), page, "2026-05-20T03:00:00Z".into()).unwrap();
@@ -1877,6 +2083,7 @@ mod tests {
                 page_label: Some("a".repeat(33)),
                 ocr_hash: "sha256:abc".into(),
                 markdown: "Text".into(),
+                manual_markdown: None,
                 notes: vec![],
             };
             let result = upsert_paper_page("book-1".into(), page, "2026-05-20T03:00:00Z".into());
@@ -1898,6 +2105,7 @@ mod tests {
                 page_label: None,
                 ocr_hash: "sha256:abc".into(),
                 markdown: "Text".into(),
+                manual_markdown: None,
                 notes: vec![],
             };
             let result = upsert_paper_page(
@@ -1923,6 +2131,7 @@ mod tests {
                 page_label: None,
                 ocr_hash: "sha256:abc".into(),
                 markdown: "Text".into(),
+                manual_markdown: None,
                 notes: vec![],
             };
             let result = upsert_paper_page("book-1".into(), page, "2026-05-20T03:00:00Z".into());
@@ -1973,6 +2182,7 @@ mod tests {
                     page_label: None,
                     ocr_hash: "sha256:unique".into(),
                     markdown: "Text".into(),
+                    manual_markdown: None,
                     notes: vec![Note {
                         id: "note-1".into(),
                         page_id: "page-1".into(),
@@ -2016,6 +2226,7 @@ mod tests {
                     page_label: None,
                     ocr_hash: "sha256:abc".into(),
                     markdown: "Text".into(),
+                    manual_markdown: None,
                     notes: vec![],
                 }],
             };
@@ -2069,6 +2280,7 @@ mod tests {
                     page_label: None,
                     ocr_hash: "sha256:unique_hash".into(),
                     markdown: "Text".into(),
+                    manual_markdown: None,
                     notes: vec![],
                 }],
             };
@@ -2141,6 +2353,7 @@ mod tests {
                     page_label: None,
                     ocr_hash: "sha256:shared_hash".into(),
                     markdown: "Text".into(),
+                    manual_markdown: None,
                     notes: vec![],
                 }],
             };
@@ -2157,6 +2370,7 @@ mod tests {
                     page_label: None,
                     ocr_hash: "sha256:shared_hash".into(),
                     markdown: "Text".into(),
+                    manual_markdown: None,
                     notes: vec![],
                 }],
             };
@@ -2220,6 +2434,7 @@ mod tests {
                         page_label: None,
                         ocr_hash: "sha256:hash_a".into(),
                         markdown: "A".into(),
+                        manual_markdown: None,
                         notes: vec![],
                     },
                     PaperPage {
@@ -2228,6 +2443,7 @@ mod tests {
                         page_label: None,
                         ocr_hash: "sha256:hash_b".into(),
                         markdown: "B".into(),
+                        manual_markdown: None,
                         notes: vec![],
                     },
                 ],
@@ -2297,6 +2513,7 @@ mod tests {
                     page_label: None,
                     ocr_hash: "sha256:deleted".into(),
                     markdown: "Deleted".into(),
+                    manual_markdown: None,
                     notes: vec![],
                 }],
             };
@@ -2486,6 +2703,353 @@ mod tests {
         with_init(&dir, || {
             let result = delete_pdf_doc("nonexistent".into());
             assert!(matches!(result, Err(StorageError::NotFound(_))));
+        });
+        teardown(&dir);
+    }
+
+    // -- F16: Manual Markdown Edit --
+
+    fn make_paper_book_with_page(id: &str, page_id: &str) -> crate::PaperBook {
+        use super::*;
+        PaperBook {
+            id: id.into(),
+            title: "Test".into(),
+            created_at: "2026-05-20T00:00:00Z".into(),
+            updated_at: "2026-05-20T00:00:00Z".into(),
+            pages: vec![PaperPage {
+                id: page_id.into(),
+                image_path: format!("images/{}/{}.jpg", id, page_id),
+                page_label: None,
+                ocr_hash: "sha256:abc".into(),
+                markdown: "Original OCR text".into(),
+                manual_markdown: None,
+                notes: vec![],
+            }],
+        }
+    }
+
+    fn make_pdf_doc(id: &str, page_count: i32) -> crate::PdfDoc {
+        use super::*;
+        PdfDoc {
+            id: id.into(),
+            title: "Test PDF".into(),
+            original_file_name: "test.pdf".into(),
+            pdf_path: format!("pdfs/{}.pdf", id),
+            markdown_path: format!("markdowns/{}.md", id),
+            ocr_hash: "sha256:abc".into(),
+            page_count,
+            last_read_page_index: 0,
+            tags: vec![],
+            created_at: "2026-01-01T00:00:00Z".into(),
+            updated_at: "2026-01-01T00:00:00Z".into(),
+        }
+    }
+
+    #[test]
+    fn save_paper_page_manual_markdown_persists_text() {
+        use super::*;
+        let dir = temp_dir();
+        setup(&dir);
+        with_init(&dir, || {
+            save_paper_book(make_paper_book_with_page("book-1", "page-1")).unwrap();
+            save_paper_page_manual_markdown(
+                "book-1".into(),
+                "page-1".into(),
+                Some("Edited text".into()),
+                "2026-05-20T01:00:00Z".into(),
+            )
+            .unwrap();
+            let data = get_paper_books().unwrap();
+            let page = &data.books[0].pages[0];
+            assert_eq!(page.manual_markdown, Some("Edited text".to_string()));
+            assert_eq!(page.markdown, "Original OCR text");
+            assert_eq!(data.books[0].updated_at, "2026-05-20T01:00:00Z");
+        });
+        teardown(&dir);
+    }
+
+    #[test]
+    fn save_paper_page_manual_markdown_with_none_clears_existing() {
+        use super::*;
+        let dir = temp_dir();
+        setup(&dir);
+        with_init(&dir, || {
+            save_paper_book(make_paper_book_with_page("book-1", "page-1")).unwrap();
+            save_paper_page_manual_markdown(
+                "book-1".into(),
+                "page-1".into(),
+                Some("Edited".into()),
+                "2026-05-20T01:00:00Z".into(),
+            )
+            .unwrap();
+            save_paper_page_manual_markdown(
+                "book-1".into(),
+                "page-1".into(),
+                None,
+                "2026-05-20T02:00:00Z".into(),
+            )
+            .unwrap();
+            let data = get_paper_books().unwrap();
+            assert_eq!(data.books[0].pages[0].manual_markdown, None);
+        });
+        teardown(&dir);
+    }
+
+    #[test]
+    fn save_paper_page_manual_markdown_with_whitespace_only_clears() {
+        use super::*;
+        let dir = temp_dir();
+        setup(&dir);
+        with_init(&dir, || {
+            save_paper_book(make_paper_book_with_page("book-1", "page-1")).unwrap();
+            save_paper_page_manual_markdown(
+                "book-1".into(),
+                "page-1".into(),
+                Some("Edited".into()),
+                "2026-05-20T01:00:00Z".into(),
+            )
+            .unwrap();
+            save_paper_page_manual_markdown(
+                "book-1".into(),
+                "page-1".into(),
+                Some("   \n\t  ".into()),
+                "2026-05-20T02:00:00Z".into(),
+            )
+            .unwrap();
+            let data = get_paper_books().unwrap();
+            assert_eq!(data.books[0].pages[0].manual_markdown, None);
+        });
+        teardown(&dir);
+    }
+
+    #[test]
+    fn save_paper_page_manual_markdown_preserves_non_empty_exact_whitespace() {
+        use super::*;
+        let dir = temp_dir();
+        setup(&dir);
+        with_init(&dir, || {
+            save_paper_book(make_paper_book_with_page("book-1", "page-1")).unwrap();
+            let leading = "  leading space";
+            save_paper_page_manual_markdown(
+                "book-1".into(),
+                "page-1".into(),
+                Some(leading.into()),
+                "2026-05-20T01:00:00Z".into(),
+            )
+            .unwrap();
+            let data = get_paper_books().unwrap();
+            assert_eq!(
+                data.books[0].pages[0].manual_markdown,
+                Some(leading.to_string())
+            );
+        });
+        teardown(&dir);
+    }
+
+    #[test]
+    fn save_paper_page_manual_markdown_rejects_text_over_max_length() {
+        use super::*;
+        let dir = temp_dir();
+        setup(&dir);
+        with_init(&dir, || {
+            save_paper_book(make_paper_book_with_page("book-1", "page-1")).unwrap();
+            let overlong: String = "a".repeat(MAX_MANUAL_MARKDOWN_LEN + 1);
+            let result = save_paper_page_manual_markdown(
+                "book-1".into(),
+                "page-1".into(),
+                Some(overlong),
+                "2026-05-20T01:00:00Z".into(),
+            );
+            assert!(matches!(result, Err(StorageError::ValidationError(_))));
+            // Data unchanged
+            let data = get_paper_books().unwrap();
+            assert_eq!(data.books[0].pages[0].manual_markdown, None);
+        });
+        teardown(&dir);
+    }
+
+    #[test]
+    fn save_paper_page_manual_markdown_accepts_text_at_max_length() {
+        use super::*;
+        let dir = temp_dir();
+        setup(&dir);
+        with_init(&dir, || {
+            save_paper_book(make_paper_book_with_page("book-1", "page-1")).unwrap();
+            let max: String = "a".repeat(MAX_MANUAL_MARKDOWN_LEN);
+            save_paper_page_manual_markdown(
+                "book-1".into(),
+                "page-1".into(),
+                Some(max.clone()),
+                "2026-05-20T01:00:00Z".into(),
+            )
+            .unwrap();
+            let data = get_paper_books().unwrap();
+            assert_eq!(data.books[0].pages[0].manual_markdown, Some(max));
+        });
+        teardown(&dir);
+    }
+
+    #[test]
+    fn save_paper_page_manual_markdown_unknown_page_returns_not_found() {
+        use super::*;
+        let dir = temp_dir();
+        setup(&dir);
+        with_init(&dir, || {
+            save_paper_book(make_paper_book_with_page("book-1", "page-1")).unwrap();
+            let result = save_paper_page_manual_markdown(
+                "book-1".into(),
+                "missing-page".into(),
+                Some("x".into()),
+                "2026-05-20T01:00:00Z".into(),
+            );
+            assert!(matches!(result, Err(StorageError::NotFound(_))));
+        });
+        teardown(&dir);
+    }
+
+    #[test]
+    fn get_pdf_manual_markdown_returns_default_when_no_file() {
+        use super::*;
+        let dir = temp_dir();
+        setup(&dir);
+        with_init(&dir, || {
+            save_pdf_doc(make_pdf_doc("doc-1", 5)).unwrap();
+            let data = get_pdf_manual_markdown("doc-1".into()).unwrap();
+            assert_eq!(data.version, 1);
+            assert!(data.pages.is_empty());
+        });
+        teardown(&dir);
+    }
+
+    #[test]
+    fn save_pdf_page_manual_markdown_creates_file_on_first_save() {
+        use super::*;
+        let dir = temp_dir();
+        setup(&dir);
+        with_init(&dir, || {
+            save_pdf_doc(make_pdf_doc("doc-1", 5)).unwrap();
+            save_pdf_page_manual_markdown("doc-1".into(), 0, Some("Edited page 1".into())).unwrap();
+            let path = dir.join("pdf").join("doc-1").join("manual.json");
+            assert!(path.is_file(), "manual.json should exist");
+            let data = get_pdf_manual_markdown("doc-1".into()).unwrap();
+            assert_eq!(
+                data.pages.get("0").map(|s| s.as_str()),
+                Some("Edited page 1")
+            );
+        });
+        teardown(&dir);
+    }
+
+    #[test]
+    fn save_pdf_page_manual_markdown_writes_multiple_pages() {
+        use super::*;
+        let dir = temp_dir();
+        setup(&dir);
+        with_init(&dir, || {
+            save_pdf_doc(make_pdf_doc("doc-1", 10)).unwrap();
+            for i in [0, 3, 7] {
+                save_pdf_page_manual_markdown(
+                    "doc-1".into(),
+                    i,
+                    Some(format!("Edited page {}", i)),
+                )
+                .unwrap();
+            }
+            let data = get_pdf_manual_markdown("doc-1".into()).unwrap();
+            assert_eq!(data.pages.len(), 3);
+            assert_eq!(data.pages.get("0").unwrap(), "Edited page 0");
+            assert_eq!(data.pages.get("3").unwrap(), "Edited page 3");
+            assert_eq!(data.pages.get("7").unwrap(), "Edited page 7");
+        });
+        teardown(&dir);
+    }
+
+    #[test]
+    fn save_pdf_page_manual_markdown_with_none_removes_page_override() {
+        use super::*;
+        let dir = temp_dir();
+        setup(&dir);
+        with_init(&dir, || {
+            save_pdf_doc(make_pdf_doc("doc-1", 5)).unwrap();
+            save_pdf_page_manual_markdown("doc-1".into(), 0, Some("X".into())).unwrap();
+            save_pdf_page_manual_markdown("doc-1".into(), 1, Some("Y".into())).unwrap();
+            save_pdf_page_manual_markdown("doc-1".into(), 0, None).unwrap();
+            let data = get_pdf_manual_markdown("doc-1".into()).unwrap();
+            assert_eq!(data.pages.len(), 1);
+            assert!(data.pages.get("0").is_none());
+            assert_eq!(data.pages.get("1").unwrap(), "Y");
+        });
+        teardown(&dir);
+    }
+
+    #[test]
+    fn save_pdf_page_manual_markdown_with_whitespace_only_removes_override() {
+        use super::*;
+        let dir = temp_dir();
+        setup(&dir);
+        with_init(&dir, || {
+            save_pdf_doc(make_pdf_doc("doc-1", 5)).unwrap();
+            save_pdf_page_manual_markdown("doc-1".into(), 0, Some("X".into())).unwrap();
+            save_pdf_page_manual_markdown("doc-1".into(), 0, Some("  \n  ".into())).unwrap();
+            let data = get_pdf_manual_markdown("doc-1".into()).unwrap();
+            assert!(data.pages.get("0").is_none());
+        });
+        teardown(&dir);
+    }
+
+    #[test]
+    fn save_pdf_page_manual_markdown_rejects_text_over_max_length() {
+        use super::*;
+        let dir = temp_dir();
+        setup(&dir);
+        with_init(&dir, || {
+            save_pdf_doc(make_pdf_doc("doc-1", 5)).unwrap();
+            let overlong: String = "a".repeat(MAX_MANUAL_MARKDOWN_LEN + 1);
+            let result = save_pdf_page_manual_markdown("doc-1".into(), 0, Some(overlong));
+            assert!(matches!(result, Err(StorageError::ValidationError(_))));
+        });
+        teardown(&dir);
+    }
+
+    #[test]
+    fn save_pdf_page_manual_markdown_rejects_invalid_page_index() {
+        use super::*;
+        let dir = temp_dir();
+        setup(&dir);
+        with_init(&dir, || {
+            save_pdf_doc(make_pdf_doc("doc-1", 3)).unwrap();
+            let result = save_pdf_page_manual_markdown("doc-1".into(), -1, Some("x".into()));
+            assert!(matches!(result, Err(StorageError::ValidationError(_))));
+            let result = save_pdf_page_manual_markdown("doc-1".into(), 3, Some("x".into()));
+            assert!(matches!(result, Err(StorageError::ValidationError(_))));
+        });
+        teardown(&dir);
+    }
+
+    #[test]
+    fn save_pdf_page_manual_markdown_rejects_unknown_doc() {
+        use super::*;
+        let dir = temp_dir();
+        setup(&dir);
+        with_init(&dir, || {
+            let result = save_pdf_page_manual_markdown("missing-doc".into(), 0, Some("x".into()));
+            assert!(matches!(result, Err(StorageError::NotFound(_))));
+        });
+        teardown(&dir);
+    }
+
+    #[test]
+    fn delete_pdf_doc_removes_manual_json_file() {
+        use super::*;
+        let dir = temp_dir();
+        setup(&dir);
+        with_init(&dir, || {
+            save_pdf_doc(make_pdf_doc("doc-1", 5)).unwrap();
+            save_pdf_page_manual_markdown("doc-1".into(), 0, Some("X".into())).unwrap();
+            let path = dir.join("pdf").join("doc-1").join("manual.json");
+            assert!(path.is_file());
+            delete_pdf_doc("doc-1".into()).unwrap();
+            assert!(!path.exists());
         });
         teardown(&dir);
     }

@@ -10,7 +10,7 @@ part 'models.freezed.dart';
 
 // These functions are ignored because they are not marked as `pub`: `validate_relative_path`
 // These types are ignored because they are neither used by any `pub` functions nor (for structs and enums) marked `#[frb(unignore)]`: `CacheRecord`
-// These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `assert_fields_are_eq`, `assert_fields_are_eq`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `eq`, `eq`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `from`
+// These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `assert_fields_are_eq`, `assert_fields_are_eq`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `eq`, `eq`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `from`
 
 /// A note attached to a specific page.
 class Note {
@@ -218,6 +218,11 @@ class PaperPage {
 
   /// Extracted Markdown text.
   final String markdown;
+
+  /// User-edited Markdown. If `Some(_)`, the reader uses this text instead of
+  /// `markdown`. The original OCR Markdown is preserved for "Reset to OCR".
+  /// Capped at 10,000 chars.
+  final String? manualMarkdown;
   final List<Note> notes;
 
   const PaperPage({
@@ -226,6 +231,7 @@ class PaperPage {
     this.pageLabel,
     required this.ocrHash,
     required this.markdown,
+    this.manualMarkdown,
     required this.notes,
   });
 
@@ -236,6 +242,7 @@ class PaperPage {
       pageLabel.hashCode ^
       ocrHash.hashCode ^
       markdown.hashCode ^
+      manualMarkdown.hashCode ^
       notes.hashCode;
 
   @override
@@ -248,6 +255,7 @@ class PaperPage {
           pageLabel == other.pageLabel &&
           ocrHash == other.ocrHash &&
           markdown == other.markdown &&
+          manualMarkdown == other.manualMarkdown &&
           notes == other.notes;
 }
 
@@ -343,6 +351,32 @@ class PdfDocsData {
           runtimeType == other.runtimeType &&
           version == other.version &&
           docs == other.docs;
+}
+
+/// Per-PDF page Markdown overrides.
+///
+/// Stored at `{data_dir}/pdf/{doc_id}/manual.json`.
+/// Keys are 0-based page indices as strings.
+/// Empty/whitespace manual text is normalized to absent (key removed).
+class PdfManualMarkdownData {
+  final int version;
+  final Map<String, String> pages;
+
+  const PdfManualMarkdownData({required this.version, required this.pages});
+
+  static Future<PdfManualMarkdownData> default_() =>
+      RustLib.instance.api.crateApiModelsPdfManualMarkdownDataDefault();
+
+  @override
+  int get hashCode => version.hashCode ^ pages.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is PdfManualMarkdownData &&
+          runtimeType == other.runtimeType &&
+          version == other.version &&
+          pages == other.pages;
 }
 
 @freezed

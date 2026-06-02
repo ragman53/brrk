@@ -66,7 +66,7 @@ class RustLib extends BaseEntrypoint<RustLibApi, RustLibApiImpl, RustLibWire> {
   String get codegenVersion => '2.12.0';
 
   @override
-  int get rustContentHash => -1345491495;
+  int get rustContentHash => 382476010;
 
   static const kDefaultExternalLibraryLoaderConfig =
       ExternalLibraryLoaderConfig(
@@ -99,6 +99,10 @@ abstract class RustLibApi extends BaseApi {
 
   Future<PdfDocsData> crateApiStorageGetPdfDocs();
 
+  Future<PdfManualMarkdownData> crateApiStorageGetPdfManualMarkdown({
+    required String docId,
+  });
+
   Future<String> crateApiStorageGetPdfMarkdown({required String docId});
 
   void crateApiStorageInitApp({required String dataDir});
@@ -106,6 +110,8 @@ abstract class RustLibApi extends BaseApi {
   Future<PaperBooksData> crateApiModelsPaperBooksDataDefault();
 
   Future<PdfDocsData> crateApiModelsPdfDocsDataDefault();
+
+  Future<PdfManualMarkdownData> crateApiModelsPdfManualMarkdownDataDefault();
 
   Future<OcrResult> crateApiOcrProcessImage({
     required String base64Data,
@@ -128,7 +134,20 @@ abstract class RustLibApi extends BaseApi {
 
   Future<void> crateApiStorageSavePaperBook({required PaperBook book});
 
+  Future<void> crateApiStorageSavePaperPageManualMarkdown({
+    required String bookId,
+    required String pageId,
+    String? manualMarkdown,
+    required String updatedAt,
+  });
+
   Future<void> crateApiStorageSavePdfDoc({required PdfDoc doc});
+
+  Future<void> crateApiStorageSavePdfPageManualMarkdown({
+    required String docId,
+    required int pageIndex,
+    String? manualMarkdown,
+  });
 
   Future<void> crateApiStorageUpsertPaperPage({
     required String bookId,
@@ -354,7 +373,9 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       const TaskConstMeta(debugName: "get_pdf_docs", argNames: []);
 
   @override
-  Future<String> crateApiStorageGetPdfMarkdown({required String docId}) {
+  Future<PdfManualMarkdownData> crateApiStorageGetPdfManualMarkdown({
+    required String docId,
+  }) {
     return handler.executeNormal(
       NormalTask(
         callFfi: (port_) {
@@ -364,6 +385,37 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
             generalizedFrbRustBinding,
             serializer,
             funcId: 8,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_pdf_manual_markdown_data,
+          decodeErrorData: sse_decode_storage_error,
+        ),
+        constMeta: kCrateApiStorageGetPdfManualMarkdownConstMeta,
+        argValues: [docId],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiStorageGetPdfManualMarkdownConstMeta =>
+      const TaskConstMeta(
+        debugName: "get_pdf_manual_markdown",
+        argNames: ["docId"],
+      );
+
+  @override
+  Future<String> crateApiStorageGetPdfMarkdown({required String docId}) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_String(docId, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 9,
             port: port_,
           );
         },
@@ -388,7 +440,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
         callFfi: () {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(dataDir, serializer);
-          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 9)!;
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 10)!;
         },
         codec: SseCodec(
           decodeSuccessData: sse_decode_unit,
@@ -413,7 +465,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 10,
+            funcId: 11,
             port: port_,
           );
         },
@@ -440,7 +492,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 11,
+            funcId: 12,
             port: port_,
           );
         },
@@ -457,6 +509,36 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
 
   TaskConstMeta get kCrateApiModelsPdfDocsDataDefaultConstMeta =>
       const TaskConstMeta(debugName: "pdf_docs_data_default", argNames: []);
+
+  @override
+  Future<PdfManualMarkdownData> crateApiModelsPdfManualMarkdownDataDefault() {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 13,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_pdf_manual_markdown_data,
+          decodeErrorData: null,
+        ),
+        constMeta: kCrateApiModelsPdfManualMarkdownDataDefaultConstMeta,
+        argValues: [],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiModelsPdfManualMarkdownDataDefaultConstMeta =>
+      const TaskConstMeta(
+        debugName: "pdf_manual_markdown_data_default",
+        argNames: [],
+      );
 
   @override
   Future<OcrResult> crateApiOcrProcessImage({
@@ -476,7 +558,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 12,
+            funcId: 14,
             port: port_,
           );
         },
@@ -514,7 +596,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 13,
+            funcId: 15,
             port: port_,
           );
         },
@@ -548,7 +630,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 14,
+            funcId: 16,
             port: port_,
           );
         },
@@ -576,7 +658,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 15,
+            funcId: 17,
             port: port_,
           );
         },
@@ -595,6 +677,45 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       const TaskConstMeta(debugName: "save_paper_book", argNames: ["book"]);
 
   @override
+  Future<void> crateApiStorageSavePaperPageManualMarkdown({
+    required String bookId,
+    required String pageId,
+    String? manualMarkdown,
+    required String updatedAt,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_String(bookId, serializer);
+          sse_encode_String(pageId, serializer);
+          sse_encode_opt_String(manualMarkdown, serializer);
+          sse_encode_String(updatedAt, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 18,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_unit,
+          decodeErrorData: sse_decode_storage_error,
+        ),
+        constMeta: kCrateApiStorageSavePaperPageManualMarkdownConstMeta,
+        argValues: [bookId, pageId, manualMarkdown, updatedAt],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiStorageSavePaperPageManualMarkdownConstMeta =>
+      const TaskConstMeta(
+        debugName: "save_paper_page_manual_markdown",
+        argNames: ["bookId", "pageId", "manualMarkdown", "updatedAt"],
+      );
+
+  @override
   Future<void> crateApiStorageSavePdfDoc({required PdfDoc doc}) {
     return handler.executeNormal(
       NormalTask(
@@ -604,7 +725,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 16,
+            funcId: 19,
             port: port_,
           );
         },
@@ -623,6 +744,43 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       const TaskConstMeta(debugName: "save_pdf_doc", argNames: ["doc"]);
 
   @override
+  Future<void> crateApiStorageSavePdfPageManualMarkdown({
+    required String docId,
+    required int pageIndex,
+    String? manualMarkdown,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_String(docId, serializer);
+          sse_encode_i_32(pageIndex, serializer);
+          sse_encode_opt_String(manualMarkdown, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 20,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_unit,
+          decodeErrorData: sse_decode_storage_error,
+        ),
+        constMeta: kCrateApiStorageSavePdfPageManualMarkdownConstMeta,
+        argValues: [docId, pageIndex, manualMarkdown],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiStorageSavePdfPageManualMarkdownConstMeta =>
+      const TaskConstMeta(
+        debugName: "save_pdf_page_manual_markdown",
+        argNames: ["docId", "pageIndex", "manualMarkdown"],
+      );
+
+  @override
   Future<void> crateApiStorageUpsertPaperPage({
     required String bookId,
     required PaperPage page,
@@ -638,7 +796,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 17,
+            funcId: 21,
             port: port_,
           );
         },
@@ -658,6 +816,16 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
         debugName: "upsert_paper_page",
         argNames: ["bookId", "page", "updatedAt"],
       );
+
+  @protected
+  Map<String, String> dco_decode_Map_String_String_None(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return Map.fromEntries(
+      dco_decode_list_record_string_string(
+        raw,
+      ).map((e) => MapEntry(e.$1, e.$2)),
+    );
+  }
 
   @protected
   String dco_decode_String(dynamic raw) {
@@ -747,6 +915,12 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   Uint8List dco_decode_list_prim_u_8_strict(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     return raw as Uint8List;
+  }
+
+  @protected
+  List<(String, String)> dco_decode_list_record_string_string(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return (raw as List<dynamic>).map(dco_decode_record_string_string).toList();
   }
 
   @protected
@@ -863,15 +1037,16 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   PaperPage dco_decode_paper_page(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     final arr = raw as List<dynamic>;
-    if (arr.length != 6)
-      throw Exception('unexpected arr length: expect 6 but see ${arr.length}');
+    if (arr.length != 7)
+      throw Exception('unexpected arr length: expect 7 but see ${arr.length}');
     return PaperPage(
       id: dco_decode_String(arr[0]),
       imagePath: dco_decode_String(arr[1]),
       pageLabel: dco_decode_opt_String(arr[2]),
       ocrHash: dco_decode_String(arr[3]),
       markdown: dco_decode_String(arr[4]),
-      notes: dco_decode_list_note(arr[5]),
+      manualMarkdown: dco_decode_opt_String(arr[5]),
+      notes: dco_decode_list_note(arr[6]),
     );
   }
 
@@ -909,6 +1084,28 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  PdfManualMarkdownData dco_decode_pdf_manual_markdown_data(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 2)
+      throw Exception('unexpected arr length: expect 2 but see ${arr.length}');
+    return PdfManualMarkdownData(
+      version: dco_decode_u_32(arr[0]),
+      pages: dco_decode_Map_String_String_None(arr[1]),
+    );
+  }
+
+  @protected
+  (String, String) dco_decode_record_string_string(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 2) {
+      throw Exception('Expected 2 elements, got ${arr.length}');
+    }
+    return (dco_decode_String(arr[0]), dco_decode_String(arr[1]));
+  }
+
+  @protected
   StorageError dco_decode_storage_error(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     switch (raw[0]) {
@@ -943,6 +1140,15 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   void dco_decode_unit(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     return;
+  }
+
+  @protected
+  Map<String, String> sse_decode_Map_String_String_None(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var inner = sse_decode_list_record_string_string(deserializer);
+    return Map.fromEntries(inner.map((e) => MapEntry(e.$1, e.$2)));
   }
 
   @protected
@@ -1071,6 +1277,20 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     // Codec=Sse (Serialization based), see doc to use other codecs
     var len_ = sse_decode_i_32(deserializer);
     return deserializer.buffer.getUint8List(len_);
+  }
+
+  @protected
+  List<(String, String)> sse_decode_list_record_string_string(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    var len_ = sse_decode_i_32(deserializer);
+    var ans_ = <(String, String)>[];
+    for (var idx_ = 0; idx_ < len_; ++idx_) {
+      ans_.add(sse_decode_record_string_string(deserializer));
+    }
+    return ans_;
   }
 
   @protected
@@ -1209,6 +1429,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     var var_pageLabel = sse_decode_opt_String(deserializer);
     var var_ocrHash = sse_decode_String(deserializer);
     var var_markdown = sse_decode_String(deserializer);
+    var var_manualMarkdown = sse_decode_opt_String(deserializer);
     var var_notes = sse_decode_list_note(deserializer);
     return PaperPage(
       id: var_id,
@@ -1216,6 +1437,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       pageLabel: var_pageLabel,
       ocrHash: var_ocrHash,
       markdown: var_markdown,
+      manualMarkdown: var_manualMarkdown,
       notes: var_notes,
     );
   }
@@ -1258,6 +1480,26 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  PdfManualMarkdownData sse_decode_pdf_manual_markdown_data(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_version = sse_decode_u_32(deserializer);
+    var var_pages = sse_decode_Map_String_String_None(deserializer);
+    return PdfManualMarkdownData(version: var_version, pages: var_pages);
+  }
+
+  @protected
+  (String, String) sse_decode_record_string_string(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_field0 = sse_decode_String(deserializer);
+    var var_field1 = sse_decode_String(deserializer);
+    return (var_field0, var_field1);
+  }
+
+  @protected
   StorageError sse_decode_storage_error(SseDeserializer deserializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
 
@@ -1297,6 +1539,18 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   @protected
   void sse_decode_unit(SseDeserializer deserializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
+  }
+
+  @protected
+  void sse_encode_Map_String_String_None(
+    Map<String, String> self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_list_record_string_string(
+      self.entries.map((e) => (e.key, e.value)).toList(),
+      serializer,
+    );
   }
 
   @protected
@@ -1424,6 +1678,18 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  void sse_encode_list_record_string_string(
+    List<(String, String)> self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_i_32(self.length, serializer);
+    for (final item in self) {
+      sse_encode_record_string_string(item, serializer);
+    }
+  }
+
+  @protected
   void sse_encode_note(Note self, SseSerializer serializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     sse_encode_String(self.id, serializer);
@@ -1531,6 +1797,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     sse_encode_opt_String(self.pageLabel, serializer);
     sse_encode_String(self.ocrHash, serializer);
     sse_encode_String(self.markdown, serializer);
+    sse_encode_opt_String(self.manualMarkdown, serializer);
     sse_encode_list_note(self.notes, serializer);
   }
 
@@ -1555,6 +1822,26 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     // Codec=Sse (Serialization based), see doc to use other codecs
     sse_encode_u_32(self.version, serializer);
     sse_encode_list_pdf_doc(self.docs, serializer);
+  }
+
+  @protected
+  void sse_encode_pdf_manual_markdown_data(
+    PdfManualMarkdownData self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_u_32(self.version, serializer);
+    sse_encode_Map_String_String_None(self.pages, serializer);
+  }
+
+  @protected
+  void sse_encode_record_string_string(
+    (String, String) self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_String(self.$1, serializer);
+    sse_encode_String(self.$2, serializer);
   }
 
   @protected

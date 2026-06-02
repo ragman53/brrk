@@ -149,6 +149,11 @@ pub struct PaperPage {
     /// Extracted Markdown text.
     #[serde(default)]
     pub markdown: String,
+    /// User-edited Markdown. If `Some(_)`, the reader uses this text instead of
+    /// `markdown`. The original OCR Markdown is preserved for "Reset to OCR".
+    /// Capped at 10,000 chars.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub manual_markdown: Option<String>,
     #[serde(default)]
     pub notes: Vec<Note>,
 }
@@ -196,6 +201,31 @@ pub struct PdfDoc {
     pub tags: Vec<String>,
     pub created_at: String,
     pub updated_at: String,
+}
+
+// ---------------------------------------------------------------------------
+// PDF manual Markdown
+// ---------------------------------------------------------------------------
+
+/// Per-PDF page Markdown overrides.
+///
+/// Stored at `{data_dir}/pdf/{doc_id}/manual.json`.
+/// Keys are 0-based page indices as strings.
+/// Empty/whitespace manual text is normalized to absent (key removed).
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PdfManualMarkdownData {
+    pub version: u32,
+    #[serde(default)]
+    pub pages: std::collections::HashMap<String, String>,
+}
+
+impl Default for PdfManualMarkdownData {
+    fn default() -> Self {
+        Self {
+            version: 1,
+            pages: std::collections::HashMap::new(),
+        }
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -442,6 +472,7 @@ mod tests {
                 page_label: None,
                 ocr_hash: "sha256:abc".into(),
                 markdown: "Extracted text".into(),
+                manual_markdown: None,
                 notes: vec![],
             }],
         };

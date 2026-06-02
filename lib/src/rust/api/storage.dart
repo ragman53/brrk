@@ -77,3 +77,34 @@ Future<void> deletePdfDoc({required String docId}) =>
 /// Clears all OCR cache entries and returns the total count removed.
 Future<int> clearOcrCache() =>
     RustLib.instance.api.crateApiStorageClearOcrCache();
+
+/// Persists a manual Markdown override for a paper page.
+/// `None` or whitespace clears the override.
+Future<void> savePaperPageManualMarkdown({
+  required String bookId,
+  required String pageId,
+  String? manualMarkdown,
+  required String updatedAt,
+}) => RustLib.instance.api.crateApiStorageSavePaperPageManualMarkdown(
+  bookId: bookId,
+  pageId: pageId,
+  manualMarkdown: manualMarkdown,
+  updatedAt: updatedAt,
+);
+
+/// Returns all manual Markdown overrides for a PDF. Returns an empty struct
+/// if no manual file exists yet.
+Future<PdfManualMarkdownData> getPdfManualMarkdown({required String docId}) =>
+    RustLib.instance.api.crateApiStorageGetPdfManualMarkdown(docId: docId);
+
+/// Persists or clears a manual Markdown override for one PDF page.
+/// `page_index` is 0-based. `None` or whitespace clears the override.
+Future<void> savePdfPageManualMarkdown({
+  required String docId,
+  required int pageIndex,
+  String? manualMarkdown,
+}) => RustLib.instance.api.crateApiStorageSavePdfPageManualMarkdown(
+  docId: docId,
+  pageIndex: pageIndex,
+  manualMarkdown: manualMarkdown,
+);
