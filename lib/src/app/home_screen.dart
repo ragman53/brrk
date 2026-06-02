@@ -7,6 +7,7 @@ import 'package:brrk/src/app/pdf_service.dart';
 import 'package:brrk/src/app/pdf_viewer_screen.dart';
 import 'package:brrk/src/app/settings_screen.dart';
 import 'package:brrk/src/app/paper_book_detail_screen.dart';
+import 'package:brrk/src/app/vocabulary/vocabulary_screen.dart';
 import 'package:brrk/src/rust/api/models.dart';
 import 'package:brrk/src/rust/api/storage.dart' as storage;
 import 'package:url_launcher/url_launcher.dart';
@@ -60,6 +61,17 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
               } else {
                 ref.read(pdfDocsProvider.notifier).refresh();
               }
+            },
+          ),
+          IconButton(
+            icon: const Icon(Icons.menu_book),
+            tooltip: 'Vocabulary',
+            onPressed: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (_) => const VocabularyScreen(),
+                ),
+              );
             },
           ),
           IconButton(

@@ -7,6 +7,7 @@ import 'package:brrk/src/app/home_providers.dart';
 import 'package:brrk/src/app/markdown_editor.dart';
 import 'package:brrk/src/app/note_draft.dart';
 import 'package:brrk/src/app/note_editor.dart';
+import 'package:brrk/src/app/vocabulary/vocabulary_screen.dart';
 import 'package:brrk/src/rust/api/storage.dart' as storage;
 import 'package:brrk/src/rust/api/models.dart';
 
@@ -400,6 +401,19 @@ class _PdfViewerScreenState extends ConsumerState<PdfViewerScreen> {
       appBar: AppBar(
         title: Text(widget.doc.title),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.menu_book),
+            tooltip: 'Vocabulary for this document',
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (_) => VocabularyScreen(
+                  initialFilter: VocabSourceFilter.pdfDoc(
+                    docId: widget.doc.id,
+                  ),
+                ),
+              ),
+            ),
+          ),
           IconButton(
             icon: const Icon(Icons.edit_outlined),
             tooltip: 'Edit page Markdown',

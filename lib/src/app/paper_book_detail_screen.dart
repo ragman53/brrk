@@ -8,6 +8,7 @@ import 'package:brrk/src/app/camera_screen.dart';
 import 'package:brrk/src/app/error_service.dart';
 import 'package:brrk/src/app/home_providers.dart';
 import 'package:brrk/src/app/note_draft.dart';
+import 'package:brrk/src/app/vocabulary/vocabulary_screen.dart';
 import 'package:brrk/src/app/note_editor.dart';
 import 'package:brrk/src/app/markdown_editor.dart';
 import 'package:brrk/src/app/ocr_disclosure.dart';
@@ -111,6 +112,21 @@ class _PaperBookDetailScreenState extends ConsumerState<PaperBookDetailScreen> {
       appBar: AppBar(
         title: Text(_book!.title),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.menu_book),
+            tooltip: 'Vocabulary for this book',
+            onPressed: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (_) => VocabularyScreen(
+                    initialFilter: VocabSourceFilter.paperBook(
+                      bookId: _book!.id,
+                    ),
+                  ),
+                ),
+              );
+            },
+          ),
           IconButton(
             icon: const Icon(Icons.edit_outlined),
             tooltip: 'Edit page Markdown',
