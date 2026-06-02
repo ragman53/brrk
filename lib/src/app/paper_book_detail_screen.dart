@@ -423,6 +423,8 @@ class _PaperBookDetailScreenState extends ConsumerState<PaperBookDetailScreen> {
       pageLabel: newLabel,
       ocrHash: page.ocrHash,
       markdown: page.markdown,
+      // Preserve any existing manual edit; label changes must not erase it.
+      manualMarkdown: page.manualMarkdown,
       notes: page.notes,
     );
     try {
@@ -951,7 +953,10 @@ class _ExportJsonSheetState extends State<_ExportJsonSheet> {
       pages.add({
         'capture_index': i + 1,
         'page_label': page.pageLabel,
-        'markdown': page.markdown,
+        // Export the displayed reader text: manual edit takes precedence
+        // over the original OCR. Original OCR is preserved on disk in
+        // PaperPage.markdown and remains available via "Reset to OCR".
+        'markdown': page.manualMarkdown ?? page.markdown,
         'notes': page.notes
             .map(
               (n) => {

@@ -54,5 +54,77 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.byIcon(Icons.edit_outlined), findsOneWidget);
     });
+
+    // Verify the manual override is used when present in the loaded data.
+    testWidgets('uses manual page override when present', (tester) async {
+      const ocrMarkdown =
+          '<!-- page: 1 -->\n# Original\n\nOriginal OCR paragraph.';
+      const manualText = 'Edited paragraph body.';
+      final manual = PdfManualMarkdownData(
+        version: 1,
+        pages: {'0': manualText},
+      );
+      await tester.pumpWidget(
+        ProviderScope(
+          child: MaterialApp(
+            home: PdfViewerScreen(
+              doc: doc,
+              getPdfMarkdownOverride: (_) async => ocrMarkdown,
+              getPdfManualMarkdownOverride: (_) async => manual,
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(find.textContaining('Edited paragraph body.'), findsOneWidget);
+      // The original OCR text should be replaced, not present.
+      expect(find.textContaining('Original OCR paragraph.'), findsNothing);
+    });
+
+    testWidgets('falls back to OCR markdown when no manual override', (
+      tester,
+    ) async {
+      const ocrMarkdown = '<!-- page: 1 -->\n# Original\n\nOriginal OCR paragraph.';
+      final manual = PdfManualMarkdownData(version: 1, pages: const {});
+      await tester.pumpWidget(
+        ProviderScope(
+          child: MaterialApp(
+            home: PdfViewerScreen(
+              doc: doc,
+              getPdfMarkdownOverride: (_) async => ocrMarkdown,
+              getPdfManualMarkdownOverride: (_) async => manual,
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(find.textContaining('Original OCR paragraph.'), findsOneWidget);
+    });
+
+    testWidgets('page indicator shows edit icon when current page has override', (
+      tester,
+    ) async {
+      const ocrMarkdown = '<!-- page: 1 -->\n# Page\n\nSome body text.';
+      final manual = PdfManualMarkdownData(
+        version: 1,
+        pages: const {'0': 'edited'},
+      );
+      await tester.pumpWidget(
+        ProviderScope(
+          child: MaterialApp(
+            home: PdfViewerScreen(
+              doc: doc,
+              getPdfMarkdownOverride: (_) async => ocrMarkdown,
+              getPdfManualMarkdownOverride: (_) async => manual,
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      // Page indicator is "Page 1 / 3" + edit icon when override exists.
+      expect(find.textContaining('Page 1 / 3'), findsOneWidget);
+      // Edit icon in the indicator area (chip) should be present.
+      expect(find.byIcon(Icons.edit), findsOneWidget);
+    });
   });
 }

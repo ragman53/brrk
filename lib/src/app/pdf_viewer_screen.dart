@@ -13,7 +13,21 @@ import 'package:brrk/src/rust/api/models.dart';
 class PdfViewerScreen extends ConsumerStatefulWidget {
   final PdfDoc doc;
 
-  const PdfViewerScreen({super.key, required this.doc});
+  /// Optional test seam: if provided, replaces the FRB markdown load
+  /// (`getPdfMarkdown`). If null, FRB is used.
+  final Future<String> Function(String docId)? getPdfMarkdownOverride;
+
+  /// Optional test seam: if provided, replaces the FRB manual markdown
+  /// load (`getPdfManualMarkdown`). If null, FRB is used.
+  final Future<PdfManualMarkdownData> Function(String docId)?
+      getPdfManualMarkdownOverride;
+
+  const PdfViewerScreen({
+    super.key,
+    required this.doc,
+    this.getPdfMarkdownOverride,
+    this.getPdfManualMarkdownOverride,
+  });
 
   @override
   ConsumerState<PdfViewerScreen> createState() => _PdfViewerScreenState();
@@ -59,9 +73,12 @@ class _PdfViewerScreenState extends ConsumerState<PdfViewerScreen> {
       _error = null;
     });
     try {
-      final content = await storage.getPdfMarkdown(docId: widget.doc.id);
-      final manual =
-          await storage.getPdfManualMarkdown(docId: widget.doc.id);
+      final content = widget.getPdfMarkdownOverride != null
+          ? await widget.getPdfMarkdownOverride!(widget.doc.id)
+          : await storage.getPdfMarkdown(docId: widget.doc.id);
+      final manual = widget.getPdfManualMarkdownOverride != null
+          ? await widget.getPdfManualMarkdownOverride!(widget.doc.id)
+          : await storage.getPdfManualMarkdown(docId: widget.doc.id);
       final sections = _splitByPageMarkers(content);
       final toc = _extractToc(content);
 

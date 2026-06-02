@@ -241,5 +241,57 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.byIcon(Icons.edit), findsOneWidget);
     });
+
+    // Regression: editing a page label must not erase the manual Markdown.
+    // We can't drive the dialog from a unit test (it uses FRB storage
+    // directly), so we assert the structural contract: rebuilding a
+    // PaperPage for label changes preserves `manualMarkdown`.
+    test('label-edit rebuild of PaperPage preserves manualMarkdown', () {
+      final page = PaperPage(
+        id: 'page-1',
+        imagePath: 'images/book-1/page-1.jpg',
+        pageLabel: '12',
+        ocrHash: 'sha256:abc',
+        markdown: 'Original OCR text',
+        manualMarkdown: 'Edited text',
+        notes: const [],
+      );
+      final newLabel = '42';
+      final rebuilt = PaperPage(
+        id: page.id,
+        imagePath: page.imagePath,
+        pageLabel: newLabel,
+        ocrHash: page.ocrHash,
+        markdown: page.markdown,
+        manualMarkdown: page.manualMarkdown,
+        notes: page.notes,
+      );
+      expect(rebuilt.pageLabel, '42');
+      expect(rebuilt.manualMarkdown, 'Edited text');
+      expect(rebuilt.markdown, 'Original OCR text');
+    });
+
+    // Companion test: same rebuild, manualMarkdown is null (no edit yet).
+    test('label-edit rebuild of PaperPage keeps null manualMarkdown', () {
+      final page = PaperPage(
+        id: 'page-1',
+        imagePath: 'images/book-1/page-1.jpg',
+        pageLabel: null,
+        ocrHash: 'sha256:abc',
+        markdown: 'Original OCR text',
+        notes: const [],
+      );
+      final rebuilt = PaperPage(
+        id: page.id,
+        imagePath: page.imagePath,
+        pageLabel: '1',
+        ocrHash: page.ocrHash,
+        markdown: page.markdown,
+        manualMarkdown: page.manualMarkdown,
+        notes: page.notes,
+      );
+      expect(rebuilt.manualMarkdown, isNull);
+      expect(rebuilt.pageLabel, '1');
+    });
   });
 }

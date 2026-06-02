@@ -2976,7 +2976,7 @@ mod tests {
             save_pdf_page_manual_markdown("doc-1".into(), 0, None).unwrap();
             let data = get_pdf_manual_markdown("doc-1".into()).unwrap();
             assert_eq!(data.pages.len(), 1);
-            assert!(data.pages.get("0").is_none());
+            assert!(!data.pages.contains_key("0"));
             assert_eq!(data.pages.get("1").unwrap(), "Y");
         });
         teardown(&dir);
@@ -2992,7 +2992,7 @@ mod tests {
             save_pdf_page_manual_markdown("doc-1".into(), 0, Some("X".into())).unwrap();
             save_pdf_page_manual_markdown("doc-1".into(), 0, Some("  \n  ".into())).unwrap();
             let data = get_pdf_manual_markdown("doc-1".into()).unwrap();
-            assert!(data.pages.get("0").is_none());
+            assert!(!data.pages.contains_key("0"));
         });
         teardown(&dir);
     }

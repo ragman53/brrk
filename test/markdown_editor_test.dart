@@ -231,6 +231,89 @@ void main() {
       expect(popped!.reset, isTrue);
     });
 
+    testWidgets('text field has maxLength of 10_000', (tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: MarkdownEditorScreen(
+            title: 'Edit page Markdown',
+            initialText: '',
+            hasManualEdit: false,
+            onSave: (_) async => true,
+            onReset: () async => true,
+          ),
+        ),
+      );
+      final field = tester.widget<TextField>(find.byType(TextField));
+      expect(field.maxLength, MarkdownEditorScreen.maxLength);
+      expect(MarkdownEditorScreen.maxLength, 10_000);
+    });
+
+    testWidgets('PopScope.canPop is true when not dirty', (tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: MarkdownEditorScreen(
+            title: 'Edit page Markdown',
+            initialText: 'foo',
+            hasManualEdit: false,
+            onSave: (_) async => true,
+            onReset: () async => true,
+          ),
+        ),
+      );
+      // The editor's PopScope is the innermost; popScopeScaffoldGuard is
+      // added by MaterialApp/Navigator. Use byWidgetPredicate to disambiguate.
+      final popScope = tester.widget<PopScope>(
+        find.byWidgetPredicate(
+          (w) => w is PopScope && w.child is Scaffold,
+        ),
+      );
+      expect(popScope.canPop, isTrue);
+    });
+
+    testWidgets('PopScope.canPop becomes false when dirty', (tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: MarkdownEditorScreen(
+            title: 'Edit page Markdown',
+            initialText: 'foo',
+            hasManualEdit: false,
+            onSave: (_) async => true,
+            onReset: () async => true,
+          ),
+        ),
+      );
+      await tester.enterText(find.byType(TextField), 'bar');
+      await tester.pumpAndSettle();
+      final popScope = tester.widget<PopScope>(
+        find.byWidgetPredicate(
+          (w) => w is PopScope && w.child is Scaffold,
+        ),
+      );
+      expect(popScope.canPop, isFalse);
+    });
+
+    testWidgets('cancel with dirty text shows discard confirm dialog', (
+      tester,
+    ) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: MarkdownEditorScreen(
+            title: 'Edit page Markdown',
+            initialText: 'foo',
+            hasManualEdit: false,
+            onSave: (_) async => true,
+            onReset: () async => true,
+          ),
+        ),
+      );
+      await tester.enterText(find.byType(TextField), 'bar');
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Cancel'));
+      await tester.pumpAndSettle();
+      expect(find.text('Discard changes?'), findsOneWidget);
+      expect(find.text('Discard'), findsOneWidget);
+    });
+
     testWidgets('save failure keeps editor open and shows snackbar', (tester) async {
       MarkdownEditorResult? popped;
       final navKey = GlobalKey<NavigatorState>();
