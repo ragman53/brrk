@@ -1,34 +1,24 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:brrk/src/app/note_draft.dart';
 import 'package:brrk/src/app/note_editor.dart';
-import 'package:brrk/src/rust/api/models.dart';
 
 void main() {
   group('NoteEditorScreen', () {
     testWidgets('shows Add Note title when no existing notes', (tester) async {
       await tester.pumpWidget(
-        const MaterialApp(home: NoteEditorScreen(pageId: 'page-1')),
+        const MaterialApp(home: NoteEditorScreen(title: 'Add Note')),
       );
       expect(find.text('Add Note'), findsOneWidget);
     });
 
     testWidgets('shows Edit Note title when editing', (tester) async {
-      final now = DateTime.now().toUtc().toIso8601String();
       await tester.pumpWidget(
-        MaterialApp(
+        const MaterialApp(
           home: NoteEditorScreen(
-            pageId: 'page-1',
-            existingNote: Note(
-              id: 'n1',
-              pageId: 'page-1',
-              selectedText: '',
-              startOffset: 0,
-              endOffset: 0,
-              content: 'My existing note',
-              tags: const ['important'],
-              createdAt: now,
-              updatedAt: now,
-            ),
+            title: 'Edit Note',
+            initialContent: 'My existing note',
+            initialTags: ['important'],
           ),
         ),
       );
@@ -39,7 +29,7 @@ void main() {
       await tester.pumpWidget(
         const MaterialApp(
           home: NoteEditorScreen(
-            pageId: 'page-1',
+            title: 'Add Note',
             selectedText: 'This is the selected text',
           ),
         ),
@@ -50,7 +40,7 @@ void main() {
 
     testWidgets('shows validation error on empty save', (tester) async {
       await tester.pumpWidget(
-        const MaterialApp(home: NoteEditorScreen(pageId: 'page-1')),
+        const MaterialApp(home: NoteEditorScreen(title: 'Add Note')),
       );
       await tester.tap(find.text('Save'));
       await tester.pumpAndSettle();
@@ -59,7 +49,7 @@ void main() {
 
     testWidgets('tag chips appear and toggle', (tester) async {
       await tester.pumpWidget(
-        const MaterialApp(home: NoteEditorScreen(pageId: 'page-1')),
+        const MaterialApp(home: NoteEditorScreen(title: 'Add Note')),
       );
       expect(find.text('important'), findsOneWidget);
       expect(find.text('question'), findsOneWidget);
@@ -80,7 +70,7 @@ void main() {
 
     testWidgets('custom tag can be created and selected', (tester) async {
       await tester.pumpWidget(
-        const MaterialApp(home: NoteEditorScreen(pageId: 'page-1')),
+        const MaterialApp(home: NoteEditorScreen(title: 'Add Note')),
       );
 
       await tester.enterText(find.byType(TextField).last, 'my-tag');
@@ -100,7 +90,7 @@ void main() {
 
     testWidgets('max 5 tags enforced', (tester) async {
       await tester.pumpWidget(
-        const MaterialApp(home: NoteEditorScreen(pageId: 'page-1')),
+        const MaterialApp(home: NoteEditorScreen(title: 'Add Note')),
       );
       // Select all 5 tags.
       for (final tag in ['important', 'question', 'quote', 'summary', 'todo']) {
@@ -120,7 +110,7 @@ void main() {
       tester,
     ) async {
       await tester.pumpWidget(
-        const MaterialApp(home: NoteEditorScreen(pageId: 'page-1')),
+        const MaterialApp(home: NoteEditorScreen(title: 'Add Note')),
       );
 
       final fields = tester
@@ -130,28 +120,27 @@ void main() {
       expect(fields.last.maxLength, 50);
     });
 
-    testWidgets('overlong note content is rejected before returning note', (
+    testWidgets('overlong note content is rejected before returning draft', (
       tester,
     ) async {
-      final now = DateTime.now().toUtc().toIso8601String();
+      // The TextField's maxLength prevents typing past 10,000 chars in
+      // practice; this test verifies the editor's defensive validation
+      // path by stuffing text directly via the controller.
       await tester.pumpWidget(
-        MaterialApp(
+        const MaterialApp(
           home: NoteEditorScreen(
-            pageId: 'page-1',
-            existingNote: Note(
-              id: 'n1',
-              pageId: 'page-1',
-              selectedText: '',
-              startOffset: 0,
-              endOffset: 0,
-              content: List.filled(10001, 'x').join(),
-              tags: const [],
-              createdAt: now,
-              updatedAt: now,
-            ),
+            title: 'Edit Note',
+            initialContent: 'placeholder',
           ),
         ),
       );
+
+      // Replace the TextField controller with overlong content
+      // (simulating an existing note that was migrated with a bug).
+      final fieldFinder = find.byType(TextField).first;
+      final field = tester.widget<TextField>(fieldFinder);
+      field.controller!.text = List.filled(10001, 'x').join();
+      await tester.pumpAndSettle();
 
       await tester.tap(find.text('Save'));
       await tester.pumpAndSettle();
@@ -160,6 +149,45 @@ void main() {
         find.text('Note must be 10,000 characters or fewer'),
         findsOneWidget,
       );
+    });
+
+    testWidgets('returns NoteDraft on save with selected text and offsets', (
+      tester,
+    ) async {
+      NoteDraft? popped;
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Builder(
+            builder: (ctx) => Center(
+              child: TextButton(
+                onPressed: () async {
+                  popped = await Navigator.of(ctx).push<NoteDraft>(
+                    MaterialPageRoute(
+                      builder: (_) => const NoteEditorScreen(
+                        title: 'Add Note',
+                        selectedText: 'hello world',
+                        startOffset: 5,
+                        endOffset: 11,
+                      ),
+                    ),
+                  );
+                },
+                child: const Text('Open'),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.tap(find.text('Open'));
+      await tester.pumpAndSettle();
+      await tester.enterText(find.byType(TextField).first, 'my note');
+      await tester.tap(find.text('Save'));
+      await tester.pumpAndSettle();
+      expect(popped, isNotNull);
+      expect(popped!.content, 'my note');
+      expect(popped!.selectedText, 'hello world');
+      expect(popped!.startOffset, 5);
+      expect(popped!.endOffset, 11);
     });
   });
 }

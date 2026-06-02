@@ -2,10 +2,12 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:uuid/uuid.dart';
 import 'package:brrk/src/app/api_key.dart';
 import 'package:brrk/src/app/camera_screen.dart';
 import 'package:brrk/src/app/error_service.dart';
 import 'package:brrk/src/app/home_providers.dart';
+import 'package:brrk/src/app/note_draft.dart';
 import 'package:brrk/src/app/note_editor.dart';
 import 'package:brrk/src/app/markdown_editor.dart';
 import 'package:brrk/src/app/ocr_disclosure.dart';
@@ -612,24 +614,43 @@ class _PagesBodyState extends State<_PagesBody> {
     int? startOffset,
     int? endOffset,
   }) async {
-    final result = await Navigator.of(context).push<Note>(
+    final draft = await Navigator.of(context).push<NoteDraft>(
       MaterialPageRoute(
         builder: (_) => NoteEditorScreen(
-          pageId: page.id,
-          selectedText: selectedText,
-          startOffset: startOffset,
-          endOffset: endOffset,
-          existingNote: existingNote,
+          title: existingNote != null ? 'Edit Note' : 'Add Note',
+          selectedText:
+              selectedText ?? existingNote?.selectedText,
+          startOffset: startOffset ?? existingNote?.startOffset,
+          endOffset: endOffset ?? existingNote?.endOffset,
+          initialContent: existingNote?.content,
+          initialTags: existingNote?.tags ?? const [],
         ),
       ),
     );
-    if (result == null) return;
+    if (draft == null) return;
+
+    // Build the persisted Note. When editing, preserve id, createdAt,
+    // pageId, and the original selection text/offsets even if the
+    // editor was opened without a current selection.
+    final now = DateTime.now().toUtc().toIso8601String();
+    final note = Note(
+      id: existingNote?.id ?? const Uuid().v4(),
+      pageId: page.id,
+      selectedText: draft.selectedText,
+      startOffset: draft.startOffset,
+      endOffset: draft.endOffset,
+      content: draft.content,
+      tags: draft.tags,
+      createdAt: existingNote?.createdAt ?? now,
+      updatedAt: now,
+    );
+
     try {
-      await storage.saveNote(pageId: page.id, note: result);
+      await storage.saveNote(pageId: page.id, note: note);
       setState(() {
         final notes = List<Note>.from(_pageNotes[page.id] ?? const []);
-        notes.removeWhere((n) => n.id == result.id);
-        notes.add(result);
+        notes.removeWhere((n) => n.id == note.id);
+        notes.add(note);
         _pageNotes[page.id] = notes;
       });
       if (mounted) {

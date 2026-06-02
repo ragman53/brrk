@@ -1,24 +1,43 @@
 import 'package:flutter/material.dart';
-import 'package:brrk/src/rust/api/models.dart';
-import 'package:uuid/uuid.dart';
+import 'package:brrk/src/app/note_draft.dart';
 
 /// Dialog/screen to add or edit a note for a page.
-/// Returns the saved Note on confirm, null on cancel.
+///
+/// Returns a [NoteDraft] on confirm (which the caller persists as `Note`
+/// for paper or `PdfNote` for PDF). Returns `null` on cancel.
+///
+/// The editor owns all note validation: content, tag count, and tag
+/// length limits. Callers do not re-validate.
 class NoteEditorScreen extends StatefulWidget {
-  final String pageId;
+  /// Free-form title shown in the AppBar.
+  final String title;
+
+  /// Selected surface text (paper or PDF block text).
   final String? selectedText;
+
+  /// Optional offsets in the displayed reader text.
   final int? startOffset;
   final int? endOffset;
-  final Note? existingNote;
+
+  /// Existing note content (edit mode).
+  final String? initialContent;
+
+  /// Existing tags (edit mode).
+  final List<String> initialTags;
 
   const NoteEditorScreen({
     super.key,
-    required this.pageId,
+    this.title = 'Add Note',
     this.selectedText,
     this.startOffset,
     this.endOffset,
-    this.existingNote,
+    this.initialContent,
+    this.initialTags = const [],
   });
+
+  static const int maxNoteContentLength = 10_000;
+  static const int maxTagLength = 50;
+  static const int maxTags = 5;
 
   @override
   State<NoteEditorScreen> createState() => _NoteEditorScreenState();
@@ -28,10 +47,7 @@ class _NoteEditorScreenState extends State<NoteEditorScreen> {
   final _noteController = TextEditingController();
   final _tagController = TextEditingController();
   final Set<String> _selectedTags = {};
-  bool get _isEditing => widget.existingNote != null;
 
-  static const _maxNoteContentLength = 10_000;
-  static const _maxTagLength = 50;
   static const _availableTags = [
     'important',
     'question',
@@ -43,11 +59,12 @@ class _NoteEditorScreenState extends State<NoteEditorScreen> {
   @override
   void initState() {
     super.initState();
-    final existing = widget.existingNote;
-    if (existing != null) {
-      _noteController.text = existing.content;
-      _selectedTags.addAll(existing.tags.take(5));
+    if (widget.initialContent != null) {
+      _noteController.text = widget.initialContent!;
     }
+    _selectedTags.addAll(
+      widget.initialTags.take(NoteEditorScreen.maxTags),
+    );
   }
 
   @override
@@ -61,7 +78,7 @@ class _NoteEditorScreenState extends State<NoteEditorScreen> {
     setState(() {
       if (_selectedTags.contains(tag)) {
         _selectedTags.remove(tag);
-      } else if (_selectedTags.length < 5) {
+      } else if (_selectedTags.length < NoteEditorScreen.maxTags) {
         _selectedTags.add(tag);
       }
     });
@@ -70,13 +87,13 @@ class _NoteEditorScreenState extends State<NoteEditorScreen> {
   void _addCustomTag() {
     final tag = _tagController.text.trim();
     if (tag.isEmpty || _selectedTags.contains(tag)) return;
-    if (_selectedTags.length >= 5) {
+    if (_selectedTags.length >= NoteEditorScreen.maxTags) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('A note can have up to 5 tags')),
       );
       return;
     }
-    if (tag.runes.length > _maxTagLength) {
+    if (tag.runes.length > NoteEditorScreen.maxTagLength) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Tag must be 50 characters or fewer')),
       );
@@ -102,7 +119,7 @@ class _NoteEditorScreenState extends State<NoteEditorScreen> {
       ).showSnackBar(const SnackBar(content: Text('Note cannot be empty')));
       return;
     }
-    if (content.runes.length > _maxNoteContentLength) {
+    if (content.runes.length > NoteEditorScreen.maxNoteContentLength) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Note must be 10,000 characters or fewer'),
@@ -111,31 +128,23 @@ class _NoteEditorScreenState extends State<NoteEditorScreen> {
       return;
     }
 
-    final existing = widget.existingNote;
-    final now = DateTime.now().toUtc().toIso8601String();
-
-    final note = Note(
-      id: existing?.id ?? const Uuid().v4(),
-      pageId: widget.pageId,
-      selectedText: widget.selectedText ?? existing?.selectedText ?? '',
-      startOffset: widget.startOffset ?? existing?.startOffset,
-      endOffset: widget.endOffset ?? existing?.endOffset,
+    final draft = NoteDraft(
+      selectedText: widget.selectedText ?? '',
+      startOffset: widget.startOffset,
+      endOffset: widget.endOffset,
       content: content,
       tags: _selectedTags.toList(),
-      createdAt: existing?.createdAt ?? now,
-      updatedAt: now,
     );
-    Navigator.of(context).pop(note);
+    Navigator.of(context).pop(draft);
   }
 
   @override
   Widget build(BuildContext context) {
-    final selectedText =
-        widget.selectedText ?? widget.existingNote?.selectedText;
+    final selectedText = widget.selectedText;
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(_isEditing ? 'Edit Note' : 'Add Note'),
+        title: Text(widget.title),
         leading: TextButton(
           onPressed: () => Navigator.of(context).pop(),
           child: const Text('Cancel'),
@@ -176,7 +185,7 @@ class _NoteEditorScreenState extends State<NoteEditorScreen> {
             TextField(
               controller: _noteController,
               maxLines: 6,
-              maxLength: _maxNoteContentLength,
+              maxLength: NoteEditorScreen.maxNoteContentLength,
               decoration: const InputDecoration(
                 hintText: 'Type your note here…',
                 border: OutlineInputBorder(),
@@ -217,7 +226,7 @@ class _NoteEditorScreenState extends State<NoteEditorScreen> {
                 Expanded(
                   child: TextField(
                     controller: _tagController,
-                    maxLength: _maxTagLength,
+                    maxLength: NoteEditorScreen.maxTagLength,
                     decoration: const InputDecoration(
                       labelText: 'Create tag',
                       hintText: 'e.g. chapter-1',
