@@ -144,9 +144,7 @@ pub fn delete_pdf_note(doc_id: String, note_id: String) -> Result<(), StorageErr
 // ---------------------------------------------------------------------------
 
 /// Returns all vocabulary entries, optionally filtered by source.
-pub fn list_vocabulary(
-    source_filter: VocabSourceFilter,
-) -> Result<Vec<VocabEntry>, StorageError> {
+pub fn list_vocabulary(source_filter: VocabSourceFilter) -> Result<Vec<VocabEntry>, StorageError> {
     crate::api::store::list_vocabulary(source_filter)
 }
 
@@ -161,10 +159,7 @@ pub fn update_vocabulary_definition(
 }
 
 /// Deletes a vocabulary entry and all of its encounters.
-pub fn delete_vocabulary_entry(
-    language: String,
-    lemma: String,
-) -> Result<(), StorageError> {
+pub fn delete_vocabulary_entry(language: String, lemma: String) -> Result<(), StorageError> {
     crate::api::store::delete_vocabulary_entry(language, lemma)
 }
 

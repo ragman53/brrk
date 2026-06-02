@@ -37,12 +37,7 @@ pub fn lookup_vocabulary(
 ) -> Result<VocabLookupResult, VocabError> {
     let normalized = normalize_selection(&selected_text)?;
     let language = detect_language(&normalized)?;
-    let sentence = extract_sentence(
-        &page_context,
-        &normalized,
-        selection_start,
-        selection_end,
-    );
+    let sentence = extract_sentence(&page_context, &normalized, selection_start, selection_end);
     let encounter = VocabEncounter {
         id: new_id(),
         selected_text: normalized.clone(),
@@ -54,12 +49,11 @@ pub fn lookup_vocabulary(
     };
 
     // Check the cache.
-    if let Some(cached) = store::find_vocab_entry(&language, &normalized).map_err(|e| {
-        VocabError::StorageError(e.to_string())
-    })? {
-        return store::save_vocabulary_lookup(cached, encounter).map_err(|e| {
-            VocabError::StorageError(e.to_string())
-        });
+    if let Some(cached) = store::find_vocab_entry(&language, &normalized)
+        .map_err(|e| VocabError::StorageError(e.to_string()))?
+    {
+        return store::save_vocabulary_lookup(cached, encounter)
+            .map_err(|e| VocabError::StorageError(e.to_string()));
     }
 
     if api_key.trim().is_empty() {
@@ -89,9 +83,8 @@ pub fn lookup_vocabulary(
         updated_at: store::now_iso_for_vocab(),
     };
 
-    store::save_vocabulary_lookup(entry, encounter).map_err(|e| {
-        VocabError::StorageError(e.to_string())
-    })
+    store::save_vocabulary_lookup(entry, encounter)
+        .map_err(|e| VocabError::StorageError(e.to_string()))
 }
 
 // ---------------------------------------------------------------------------
@@ -232,10 +225,7 @@ pub(crate) fn extract_sentence(
 
 fn extract_chunk_around(text: &str) -> String {
     // Find paragraph boundary forward and backward.
-    let para_start = text
-        .rfind("\n\n")
-        .map(|i| i + 2)
-        .unwrap_or(0);
+    let para_start = text.rfind("\n\n").map(|i| i + 2).unwrap_or(0);
     let para_end_candidate = text.find("\n\n").unwrap_or(text.len());
     let mut chunk = &text[para_start..para_end_candidate];
     // Trim to sentence boundary inclusive.
@@ -444,7 +434,9 @@ fn parse_definition_response(
         .map(|c| c.message.content)
         .ok_or_else(|| VocabError::ParseError("no choices in chat response".to_string()))?;
     if content.trim().is_empty() {
-        return Err(VocabError::ParseError("empty assistant content".to_string()));
+        return Err(VocabError::ParseError(
+            "empty assistant content".to_string(),
+        ));
     }
     parse_definition_content(&content, expected_language)
 }
@@ -692,10 +684,7 @@ mod tests {
     #[test]
     fn definition_too_long_rejected() {
         let big = "a".repeat(crate::api::store::MAX_VOCAB_DEFINITION_LEN + 1);
-        let payload = format!(
-            r#"{{"language":"en","lemma":"x","definition":"{}"}}"#,
-            big
-        );
+        let payload = format!(r#"{{"language":"en","lemma":"x","definition":"{}"}}"#, big);
         let body = format!(
             r#"{{"choices":[{{"message":{{"role":"assistant","content":{:?}}}}}]}}"#,
             payload

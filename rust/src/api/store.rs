@@ -637,7 +637,9 @@ fn validate_pdf_note(note: &PdfNote) -> Result<(), StorageError> {
             )));
         }
         if tag.is_empty() {
-            return Err(StorageError::ValidationError("tag cannot be empty".to_string()));
+            return Err(StorageError::ValidationError(
+                "tag cannot be empty".to_string(),
+            ));
         }
     }
     if note.created_at.trim().is_empty() || note.updated_at.trim().is_empty() {
@@ -655,17 +657,15 @@ pub(crate) fn save_pdf_note(note: PdfNote) -> Result<(), StorageError> {
     let notes_path = data_dir.join(FILE_PDF_NOTES);
     // Source-existence re-check under the same global lock as the notes write
     // (oracle #5): ensures the doc still exists when we add a note.
-    let _guard = STORAGE_LOCK.lock().map_err(|e| {
-        StorageError::IoError(format!("storage lock poisoned: {}", e))
-    })?;
+    let _guard = STORAGE_LOCK
+        .lock()
+        .map_err(|e| StorageError::IoError(format!("storage lock poisoned: {}", e)))?;
     let docs: PdfDocsData = read_json(&docs_path)?;
     let doc = docs
         .docs
         .iter()
         .find(|d| d.id == note.doc_id)
-        .ok_or_else(|| {
-            StorageError::NotFound(format!("doc_id '{}' not found", note.doc_id))
-        })?;
+        .ok_or_else(|| StorageError::NotFound(format!("doc_id '{}' not found", note.doc_id)))?;
     if note.page_index >= doc.page_count {
         return Err(StorageError::ValidationError(format!(
             "page_index {} out of range (page_count {})",
@@ -709,7 +709,8 @@ pub(crate) fn delete_pdf_note(doc_id: String, note_id: String) -> Result<(), Sto
     let path = data_dir.join(FILE_PDF_NOTES);
     update_json_file(path, |data: &mut PdfNotesData| {
         let initial_len = data.notes.len();
-        data.notes.retain(|n| !(n.id == note_id && n.doc_id == doc_id));
+        data.notes
+            .retain(|n| !(n.id == note_id && n.doc_id == doc_id));
         if data.notes.len() == initial_len {
             return Err(StorageError::NotFound(format!(
                 "note_id '{}' not found for doc_id '{}'",
@@ -749,12 +750,12 @@ pub(crate) fn list_vocabulary(
         .into_iter()
         .filter(|e| match &source_filter {
             VocabSourceFilter::All => true,
-            VocabSourceFilter::PaperBook { book_id } => e.encounters.iter().any(|enc| {
-                matches!(&enc.source, VocabSource::Paper { book_id: b, .. } if b == book_id)
-            }),
-            VocabSourceFilter::PdfDoc { doc_id } => e.encounters.iter().any(|enc| {
-                matches!(&enc.source, VocabSource::Pdf { doc_id: d, .. } if d == doc_id)
-            }),
+            VocabSourceFilter::PaperBook { book_id } => e.encounters.iter().any(
+                |enc| matches!(&enc.source, VocabSource::Paper { book_id: b, .. } if b == book_id),
+            ),
+            VocabSourceFilter::PdfDoc { doc_id } => e.encounters.iter().any(
+                |enc| matches!(&enc.source, VocabSource::Pdf { doc_id: d, .. } if d == doc_id),
+            ),
         })
         .collect();
     Ok(filtered)
@@ -789,10 +790,7 @@ pub(crate) fn update_vocabulary_definition(
             .iter_mut()
             .find(|e| e.language == language && e.lemma == lemma)
             .ok_or_else(|| {
-                StorageError::NotFound(format!(
-                    "vocab entry not found: {} ({})",
-                    lemma, language
-                ))
+                StorageError::NotFound(format!("vocab entry not found: {} ({})", lemma, language))
             })?;
         if definition.chars().count() > MAX_VOCAB_DEFINITION_LEN {
             return Err(StorageError::ValidationError(format!(
@@ -807,15 +805,13 @@ pub(crate) fn update_vocabulary_definition(
     })
 }
 
-pub(crate) fn delete_vocabulary_entry(
-    language: String,
-    lemma: String,
-) -> Result<(), StorageError> {
+pub(crate) fn delete_vocabulary_entry(language: String, lemma: String) -> Result<(), StorageError> {
     let data_dir = app::data_dir().ok_or(StorageError::NotInitialized)?;
     let path = data_dir.join(FILE_VOCAB);
     update_json_file(path, |data: &mut VocabData| {
         let initial_len = data.entries.len();
-        data.entries.retain(|e| !(e.language == language && e.lemma == lemma));
+        data.entries
+            .retain(|e| !(e.language == language && e.lemma == lemma));
         if data.entries.len() == initial_len {
             return Err(StorageError::NotFound(format!(
                 "vocab entry not found: {} ({})",
@@ -839,10 +835,7 @@ pub(crate) fn delete_vocabulary_encounter(
             .iter_mut()
             .find(|e| e.language == language && e.lemma == lemma)
             .ok_or_else(|| {
-                StorageError::NotFound(format!(
-                    "vocab entry not found: {} ({})",
-                    lemma, language
-                ))
+                StorageError::NotFound(format!("vocab entry not found: {} ({})", lemma, language))
             })?;
         let initial_len = entry.encounters.len();
         entry.encounters.retain(|e| e.id != encounter_id);
@@ -854,7 +847,8 @@ pub(crate) fn delete_vocabulary_encounter(
         }
         // If no encounters remain, drop the entry entirely.
         if entry.encounters.is_empty() {
-            data.entries.retain(|e| !(e.language == language && e.lemma == lemma));
+            data.entries
+                .retain(|e| !(e.language == language && e.lemma == lemma));
         } else {
             entry.updated_at = now_iso();
         }
@@ -870,17 +864,17 @@ pub(crate) fn save_vocabulary_lookup(
     let path = data_dir.join(FILE_VOCAB);
     let result_entry: VocabEntry;
     let cache_hit: bool;
-    let _guard = STORAGE_LOCK.lock().map_err(|e| {
-        StorageError::IoError(format!("storage lock poisoned: {}", e))
-    })?;
+    let _guard = STORAGE_LOCK
+        .lock()
+        .map_err(|e| StorageError::IoError(format!("storage lock poisoned: {}", e)))?;
     let mut data: VocabData = read_json_or_default(&path)?;
 
     // Source-existence re-check (oracle #5): if encounter source is for a
     // deleted paper/PDF resource, refuse to save.
     if !source_exists(&data_dir, &new_encounter.source)? {
-        return Err(StorageError::NotFound(format!(
-            "source for encounter no longer exists"
-        )));
+        return Err(StorageError::NotFound(
+            "source for encounter no longer exists".to_string(),
+        ));
     }
 
     if let Some(pos) = data
@@ -892,9 +886,14 @@ pub(crate) fn save_vocabulary_lookup(
         let existing = &mut data.entries[pos];
         // Add surface form if not present.
         if !new_encounter.selected_text.is_empty()
-            && !existing.surface_forms.iter().any(|s| s == &new_encounter.selected_text)
+            && !existing
+                .surface_forms
+                .iter()
+                .any(|s| s == &new_encounter.selected_text)
         {
-            existing.surface_forms.push(new_encounter.selected_text.clone());
+            existing
+                .surface_forms
+                .push(new_encounter.selected_text.clone());
         }
         // Merge encounter by (source, normalized sentence).
         let normalized = normalize_sentence(&new_encounter.sentence);
@@ -952,19 +951,29 @@ where
 
 pub(crate) fn cleanup_vocab_for_pdf_doc(doc_id: &str) -> Result<(), StorageError> {
     let data_dir = app::data_dir().ok_or(StorageError::NotInitialized)?;
-    cleanup_vocab_for_source(&data_dir, |s| matches!(s, VocabSource::Pdf { doc_id: d, .. } if d == doc_id))
+    cleanup_vocab_for_source(
+        &data_dir,
+        |s| matches!(s, VocabSource::Pdf { doc_id: d, .. } if d == doc_id),
+    )
 }
 
 pub(crate) fn cleanup_vocab_for_paper_book(book_id: &str) -> Result<(), StorageError> {
     let data_dir = app::data_dir().ok_or(StorageError::NotInitialized)?;
-    cleanup_vocab_for_source(&data_dir, |s| matches!(s, VocabSource::Paper { book_id: b, .. } if b == book_id))
+    cleanup_vocab_for_source(
+        &data_dir,
+        |s| matches!(s, VocabSource::Paper { book_id: b, .. } if b == book_id),
+    )
 }
 
-pub(crate) fn cleanup_vocab_for_paper_page(book_id: &str, page_id: &str) -> Result<(), StorageError> {
+pub(crate) fn cleanup_vocab_for_paper_page(
+    book_id: &str,
+    page_id: &str,
+) -> Result<(), StorageError> {
     let data_dir = app::data_dir().ok_or(StorageError::NotInitialized)?;
-    cleanup_vocab_for_source(&data_dir, |s| {
-        matches!(s, VocabSource::Paper { book_id: b, page_id: p } if b == book_id && p == page_id)
-    })
+    cleanup_vocab_for_source(
+        &data_dir,
+        |s| matches!(s, VocabSource::Paper { book_id: b, page_id: p } if b == book_id && p == page_id),
+    )
 }
 
 fn source_exists(data_dir: &std::path::Path, source: &VocabSource) -> Result<bool, StorageError> {
@@ -972,9 +981,10 @@ fn source_exists(data_dir: &std::path::Path, source: &VocabSource) -> Result<boo
         VocabSource::Paper { book_id, page_id } => {
             let path = data_dir.join(FILE_PAPER_BOOKS);
             let data: PaperBooksData = read_json(&path)?;
-            Ok(data.books.iter().any(|b| {
-                b.id == *book_id && b.pages.iter().any(|p| p.id == *page_id)
-            }))
+            Ok(data
+                .books
+                .iter()
+                .any(|b| b.id == *book_id && b.pages.iter().any(|p| p.id == *page_id)))
         }
         VocabSource::Pdf { doc_id, .. } => {
             let path = data_dir.join(FILE_PDF_DOCS);
@@ -987,12 +997,25 @@ fn source_exists(data_dir: &std::path::Path, source: &VocabSource) -> Result<boo
 fn sources_equal(a: &VocabSource, b: &VocabSource) -> bool {
     match (a, b) {
         (
-            VocabSource::Paper { book_id: b1, page_id: p1 },
-            VocabSource::Paper { book_id: b2, page_id: p2 },
+            VocabSource::Paper {
+                book_id: b1,
+                page_id: p1,
+            },
+            VocabSource::Paper {
+                book_id: b2,
+                page_id: p2,
+            },
         ) => b1 == b2 && p1 == p2,
-        (VocabSource::Pdf { doc_id: d1, page_index: i1 }, VocabSource::Pdf { doc_id: d2, page_index: i2 }) => {
-            d1 == d2 && i1 == i2
-        }
+        (
+            VocabSource::Pdf {
+                doc_id: d1,
+                page_index: i1,
+            },
+            VocabSource::Pdf {
+                doc_id: d2,
+                page_index: i2,
+            },
+        ) => d1 == d2 && i1 == i2,
         _ => false,
     }
 }
@@ -1046,7 +1069,6 @@ fn days_to_ymd(days: i64) -> (i32, u32, u32) {
     let year = if m <= 2 { y + 1 } else { y };
     (year as i32, m as u32, d as u32)
 }
-
 
 /// Returns the Markdown content for a PDF document.
 pub(crate) fn get_pdf_markdown(doc_id: String) -> Result<String, StorageError> {
