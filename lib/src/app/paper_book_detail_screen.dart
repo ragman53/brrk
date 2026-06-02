@@ -863,6 +863,27 @@ class _PageViewState extends State<_PageView> {
     });
   }
 
+  /// F18 placeholder: disabled in this build because the vocabulary lookup
+  /// service and definition sheet are not yet wired. Selecting a single
+  /// English word or short Japanese term and tapping Look up will open
+  /// the definition bottom sheet. F17 ships the button so the
+  /// selected-text strip is parity-ready.
+  void _onLookUpPressed() {
+    final sel = _selectedText?.trim() ?? '';
+    if (sel.isEmpty) return;
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Vocabulary lookup is not yet available.'),
+      ),
+    );
+    setState(() {
+      _selectedText = null;
+      _selectionStart = null;
+      _selectionEnd = null;
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     final visible = widget.notes.where((n) => n.content.isNotEmpty).toList();
@@ -923,9 +944,20 @@ class _PageViewState extends State<_PageView> {
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
               ),
-              trailing: FilledButton(
-                onPressed: _addSelectedNote,
-                child: const Text('Add Note'),
+              trailing: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  OutlinedButton.icon(
+                    onPressed: _onLookUpPressed,
+                    icon: const Icon(Icons.menu_book_outlined, size: 16),
+                    label: const Text('Look up'),
+                  ),
+                  const SizedBox(width: 8),
+                  FilledButton(
+                    onPressed: _addSelectedNote,
+                    child: const Text('Add Note'),
+                  ),
+                ],
               ),
             ),
           ),

@@ -5,6 +5,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:brrk/src/app/reading_appearance.dart';
 import 'package:brrk/src/app/home_providers.dart';
 import 'package:brrk/src/app/markdown_editor.dart';
+import 'package:brrk/src/app/note_draft.dart';
+import 'package:brrk/src/app/note_editor.dart';
 import 'package:brrk/src/rust/api/storage.dart' as storage;
 import 'package:brrk/src/rust/api/models.dart';
 
@@ -40,6 +42,10 @@ class _PdfViewerScreenState extends ConsumerState<PdfViewerScreen> {
   int _currentPage = 0;
   late int _totalPages;
   PdfManualMarkdownData? _manual;
+
+  // F17: PDF notes for the current page.
+  List<PdfNote> _pageNotes = [];
+  String? _selectedText;
 
   // Per-page content sections (split by <!-- page: N --> markers).
   List<String> _pageSections = [];
@@ -90,6 +96,7 @@ class _PdfViewerScreenState extends ConsumerState<PdfViewerScreen> {
         _loading = false;
         _currentPage = widget.doc.lastReadPageIndex.clamp(0, _totalPages - 1);
       });
+      await _loadPdfNotes();
     } catch (e) {
       setState(() {
         _error = e.toString();
@@ -227,6 +234,125 @@ class _PdfViewerScreenState extends ConsumerState<PdfViewerScreen> {
     }
   }
 
+  // F17: PDF notes helpers ----------------------------------------------
+
+  Future<void> _loadPdfNotes() async {
+    try {
+      final notes = await storage.getPdfNotes(
+        docId: widget.doc.id,
+        pageIndex: _currentPage,
+      );
+      if (!mounted) return;
+      setState(() {
+        _pageNotes = notes;
+      });
+    } catch (_) {
+      // Silent: notes are best-effort; reader still works.
+    }
+  }
+
+  Future<void> _openNoteEditorForCurrent({PdfNote? existing}) async {
+    final now = DateTime.now().toUtc().toIso8601String();
+    final draft = await Navigator.of(context).push<NoteDraft>(
+      MaterialPageRoute(
+        builder: (ctx) => NoteEditorScreen(
+          title: existing != null ? 'Edit Note' : 'Add Note',
+          selectedText: existing?.selectedText ?? _selectedText,
+          startOffset: null,
+          endOffset: null,
+          initialContent: existing?.content,
+          initialTags: existing?.tags ?? const [],
+        ),
+      ),
+    );
+    if (draft == null) return;
+    final note = existing == null
+        ? PdfNote(
+            id: _newNoteId(),
+            docId: widget.doc.id,
+            pageIndex: _currentPage,
+            selectedText: draft.selectedText,
+            selectedSentence: '',
+            content: draft.content,
+            tags: draft.tags,
+            createdAt: now,
+            updatedAt: now,
+          )
+        : PdfNote(
+            id: existing.id,
+            docId: existing.docId,
+            pageIndex: existing.pageIndex,
+            selectedText: existing.selectedText,
+            selectedSentence: existing.selectedSentence,
+            content: draft.content,
+            tags: draft.tags,
+            createdAt: existing.createdAt,
+            updatedAt: now,
+          );
+    try {
+      await storage.savePdfNote(note: note);
+      if (!mounted) return;
+      setState(() {
+        _selectedText = null;
+      });
+      await _loadPdfNotes();
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to save note: $e')),
+      );
+    }
+  }
+
+  Future<void> _deletePdfNote(PdfNote note) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Delete note?'),
+        content: const Text('This will permanently delete this note.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: Colors.red),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+    try {
+      await storage.deletePdfNote(docId: note.docId, noteId: note.id);
+      if (!mounted) return;
+      await _loadPdfNotes();
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to delete note: $e')),
+      );
+    }
+  }
+
+  String _newNoteId() {
+    // Stable monotonic id; not security-sensitive.
+    return 'pn-${DateTime.now().toUtc().microsecondsSinceEpoch}';
+  }
+
+  void _onPdfLookUpPressed() {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Vocabulary lookup is not yet available.'),
+      ),
+    );
+    setState(() {
+      _selectedText = null;
+    });
+  }
+
   Future<void> _saveLastReadPageImmediate() async {
     final updatedDoc = PdfDoc(
       id: widget.doc.id,
@@ -251,8 +377,11 @@ class _PdfViewerScreenState extends ConsumerState<PdfViewerScreen> {
   void _jumpToPage(int pageIndex) {
     setState(() {
       _currentPage = pageIndex.clamp(0, _totalPages - 1);
+      _pageNotes = [];
+      _selectedText = null;
     });
     _scheduleLastReadPageSave();
+    _loadPdfNotes();
   }
 
   String get _currentPageContent {
@@ -371,20 +500,129 @@ class _PdfViewerScreenState extends ConsumerState<PdfViewerScreen> {
     }
 
     final appearance = ref.watch(readingAppearanceProvider);
-    return Container(
-      color: appearance.palette.background,
-      child: Markdown(
-        data: _currentPageContent,
-        selectable: true,
-        styleSheet: MarkdownStyleSheet(
-          h1: appearance.heading1Style(),
-          h2: appearance.heading2Style(),
-          h3: appearance.heading3Style(),
-          p: appearance.paragraphStyle(),
-          blockSpacing: appearance.density.paragraphSpacing,
-          horizontalRuleDecoration: BoxDecoration(
-            border: Border(top: BorderSide(color: appearance.palette.muted)),
+    return Column(
+      children: [
+        _buildNoteChipRow(appearance),
+        if (_selectedText != null && _selectedText!.isNotEmpty)
+          _buildSelectedStrip(appearance),
+        Expanded(
+          child: Container(
+            color: appearance.palette.background,
+            child: Markdown(
+              data: _currentPageContent,
+              selectable: true,
+              onSelectionChanged: (text, sel, cause) {
+                final str = text ?? '';
+                if (sel.isValid && !sel.isCollapsed) {
+                  final start = sel.start.clamp(0, str.length);
+                  final end = sel.end.clamp(0, str.length);
+                  setState(() {
+                    _selectedText = str.substring(start, end).trim();
+                  });
+                } else {
+                  if (_selectedText != null) {
+                    setState(() => _selectedText = null);
+                  }
+                }
+              },
+              styleSheet: MarkdownStyleSheet(
+                h1: appearance.heading1Style(),
+                h2: appearance.heading2Style(),
+                h3: appearance.heading3Style(),
+                p: appearance.paragraphStyle(),
+                blockSpacing: appearance.density.paragraphSpacing,
+                horizontalRuleDecoration: BoxDecoration(
+                  border: Border(top: BorderSide(color: appearance.palette.muted)),
+                ),
+              ),
+            ),
           ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildNoteChipRow(ReadingAppearance appearance) {
+    if (_pageNotes.isEmpty) {
+      return SizedBox(
+        height: 48,
+        child: Align(
+          alignment: Alignment.centerLeft,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            child: ActionChip(
+              avatar: const Icon(Icons.add, size: 16),
+              label: const Text('Add note'),
+              onPressed: _selectedText == null || _selectedText!.isEmpty
+                  ? () => _openNoteEditorForCurrent()
+                  : null,
+            ),
+          ),
+        ),
+      );
+    }
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      color: Color.alphaBlend(
+        appearance.palette.accent.withValues(alpha: 0.08),
+        appearance.palette.background,
+      ),
+      child: Wrap(
+        spacing: 6,
+        runSpacing: 4,
+        children: [
+          ..._pageNotes.map(
+            (n) => InputChip(
+              label: Text(
+                n.content.isEmpty ? '(empty)' : n.content.split('\n').first,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+              onPressed: () => _openNoteEditorForCurrent(existing: n),
+              onDeleted: () => _deletePdfNote(n),
+            ),
+          ),
+          ActionChip(
+            avatar: const Icon(Icons.add, size: 16),
+            label: const Text('Add note'),
+            onPressed: _selectedText == null || _selectedText!.isEmpty
+                ? () => _openNoteEditorForCurrent()
+                : null,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSelectedStrip(ReadingAppearance appearance) {
+    return Material(
+      color: Color.alphaBlend(
+        appearance.palette.accent.withValues(alpha: 0.16),
+        appearance.palette.background,
+      ),
+      child: ListTile(
+        dense: true,
+        leading: const Icon(Icons.sticky_note_2, color: Color(0xFFFFA000)),
+        title: Text(
+          _selectedText!,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+        ),
+        trailing: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            OutlinedButton.icon(
+              onPressed: _onPdfLookUpPressed,
+              icon: const Icon(Icons.menu_book_outlined, size: 16),
+              label: const Text('Look up'),
+            ),
+            const SizedBox(width: 8),
+            FilledButton(
+              onPressed: () => _openNoteEditorForCurrent(),
+              child: const Text('Add Note'),
+            ),
+          ],
         ),
       ),
     );
