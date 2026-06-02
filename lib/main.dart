@@ -7,6 +7,7 @@ import 'package:brrk/src/app/providers.dart';
 import 'package:brrk/src/app/home_screen.dart';
 import 'package:brrk/src/app/reading_appearance.dart';
 import 'package:brrk/src/app/ocr_disclosure.dart';
+import 'package:brrk/src/app/vocab_disclosure.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -39,6 +40,7 @@ class _BrrkBootstrapState extends ConsumerState<BrrkBootstrap> {
       // B3: load persisted OCR disclosure acknowledgement so the dialog only
       // appears once, not on every app restart.
       await loadOcrDisclosureAcknowledgement(ref);
+      await loadVocabDisclosureAcknowledgement(ref);
       ref.read(appInitializationProvider.notifier).setReady();
     } catch (e) {
       ref.read(appInitializationProvider.notifier).setError(e.toString());

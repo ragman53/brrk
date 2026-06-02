@@ -20,8 +20,8 @@ use crate::{VocabEncounter, VocabEntry, VocabError, VocabLookupResult, VocabSour
 pub(crate) const MAX_EN_WORD_LEN: usize = 40;
 /// Maximum chars for a valid Japanese term selection.
 pub(crate) const MAX_JA_TERM_LEN: usize = 20;
-/// Maximum chars for the response payload (Mistral max tokens × 4 ~ chars).
-const MAX_RESPONSE_CHARS: usize = 8_000;
+/// Maximum chars to include in a non-success API error.
+const MAX_ERROR_BODY_CHARS: usize = 500;
 
 // ---------------------------------------------------------------------------
 // Public API
@@ -186,33 +186,37 @@ pub(crate) fn extract_sentence(
     start: Option<i32>,
     end: Option<i32>,
 ) -> String {
-    let mut chunk: Option<String> = None;
-
-    if let (Some(s), Some(e)) = (start, end) {
+    let selection = if let (Some(s), Some(e)) = (start, end) {
         if s >= 0 && e > s {
             let start_us = s as usize;
             let end_us = e as usize;
             if end_us <= context.len() && start_us <= context.len() {
-                // Use char boundaries for safety.
-                if let (Some(s_idx), Some(e_idx)) = (
+                match (
                     floor_char_boundary(context, start_us),
                     ceil_char_boundary(context, end_us),
                 ) {
-                    let raw = &context[s_idx..e_idx];
-                    chunk = Some(extract_chunk_around(raw));
+                    (Some(s_idx), Some(e_idx)) if e_idx > s_idx => Some((s_idx, e_idx)),
+                    _ => None,
                 }
+            } else {
+                None
             }
+        } else {
+            None
         }
+    } else {
+        None
     }
-    if chunk.is_none() {
-        if let Some(idx) = context.find(selected) {
-            let end = (idx + selected.len()).min(context.len());
-            let chunk_text = &context[idx..end];
-            chunk = Some(extract_chunk_around(chunk_text));
-        }
-    }
-    let chunk = chunk.unwrap_or_else(|| selected.to_string());
-    // Cap at 500 chars.
+    .or_else(|| {
+        context
+            .find(selected)
+            .map(|idx| (idx, (idx + selected.len()).min(context.len())))
+    });
+
+    let chunk = selection
+        .map(|(s_idx, e_idx)| extract_sentence_around_selection(context, s_idx, e_idx))
+        .unwrap_or_else(|| selected.to_string());
+
     if chunk.chars().count() > crate::api::store::MAX_VOCAB_SENTENCE_LEN {
         chunk
             .chars()
@@ -223,34 +227,39 @@ pub(crate) fn extract_sentence(
     }
 }
 
-fn extract_chunk_around(text: &str) -> String {
-    // Find paragraph boundary forward and backward.
-    let para_start = text.rfind("\n\n").map(|i| i + 2).unwrap_or(0);
-    let para_end_candidate = text.find("\n\n").unwrap_or(text.len());
-    let mut chunk = &text[para_start..para_end_candidate];
-    // Trim to sentence boundary inclusive.
-    chunk = trim_to_sentence(chunk);
-    chunk.trim().to_string()
+fn extract_sentence_around_selection(context: &str, start: usize, end: usize) -> String {
+    let para_start = context[..start].rfind("\n\n").map(|i| i + 2).unwrap_or(0);
+    let para_end = context[end..]
+        .find("\n\n")
+        .map(|i| end + i)
+        .unwrap_or(context.len());
+    let paragraph = &context[para_start..para_end];
+    let rel_start = start.saturating_sub(para_start);
+    let rel_end = end.saturating_sub(para_start).min(paragraph.len());
+
+    let sent_start = paragraph[..rel_start]
+        .char_indices()
+        .rfind(|(_, c)| SENTENCE_BOUNDARIES.contains(c))
+        .map(|(i, c)| i + c.len_utf8())
+        .unwrap_or(0);
+    let sent_end = paragraph[rel_end..]
+        .char_indices()
+        .find(|(_, c)| SENTENCE_BOUNDARIES.contains(c))
+        .map(|(i, c)| rel_end + i + c.len_utf8())
+        .unwrap_or(paragraph.len());
+
+    clean_sentence(&paragraph[sent_start..sent_end])
 }
 
-fn trim_to_sentence(s: &str) -> &str {
-    // Find the last sentence boundary; if found, extend the slice to include it.
-    let mut end = s.len();
-    for (i, c) in s.char_indices() {
-        if SENTENCE_BOUNDARIES.contains(&c) {
-            end = i + c.len_utf8();
-        }
-    }
-    // Also strip leading Markdown prefix characters.
-    let mut start = 0;
-    let prefix_trim: &[&str] = &["# ", "## ", "### ", "#### ", "- ", "* ", "> "];
+fn clean_sentence(s: &str) -> String {
+    let trimmed = s.trim();
+    let prefix_trim: &[&str] = &["#### ", "### ", "## ", "# ", "- ", "* ", "> "];
     for p in prefix_trim {
-        if s[start..].starts_with(p) {
-            start += p.len();
-            break;
+        if let Some(rest) = trimmed.strip_prefix(p) {
+            return rest.trim().to_string();
         }
     }
-    &s[start..end]
+    trimmed.to_string()
 }
 
 fn floor_char_boundary(s: &str, mut idx: usize) -> Option<usize> {
@@ -376,7 +385,7 @@ impl MistralChatClient for ReqwestChatClient {
                 .text()
                 .unwrap_or_default()
                 .chars()
-                .take(MAX_RESPONSE_CHARS)
+                .take(MAX_ERROR_BODY_CHARS)
                 .collect::<String>();
             return Err(VocabError::UnknownError(format!(
                 "HTTP {}: {}",
@@ -601,10 +610,19 @@ mod tests {
     #[test]
     fn sentence_extraction_with_offsets() {
         let ctx = "Reading philosophy is rewarding. The next sentence starts here.";
-        // "philosophy is rewarding." = bytes 8..40
-        let s = extract_sentence(ctx, "philosophy", Some(8), Some(40));
-        assert!(s.contains("philosophy"));
-        assert!(s.contains("rewarding"));
+        let start = ctx.find("philosophy").unwrap() as i32;
+        let end = start + "philosophy".len() as i32;
+        let s = extract_sentence(ctx, "philosophy", Some(start), Some(end));
+        assert_eq!(s, "Reading philosophy is rewarding.");
+    }
+
+    #[test]
+    fn sentence_extraction_strips_markdown_prefix() {
+        let ctx = "# Being and Time\n\n- Reading philosophy is rewarding.";
+        let start = ctx.find("philosophy").unwrap() as i32;
+        let end = start + "philosophy".len() as i32;
+        let s = extract_sentence(ctx, "philosophy", Some(start), Some(end));
+        assert_eq!(s, "Reading philosophy is rewarding.");
     }
 
     #[test]

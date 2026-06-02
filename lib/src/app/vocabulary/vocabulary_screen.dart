@@ -50,12 +50,15 @@ class _VocabularyScreenState extends ConsumerState<VocabularyScreen> {
           const SizedBox(height: 8),
           Expanded(
             child: entriesAsync.when(
-              loading: () =>
-                  const Center(child: CircularProgressIndicator()),
+              loading: () => const Center(child: CircularProgressIndicator()),
               error: (e, _) => Center(child: Text('Error: $e')),
               data: (entries) {
                 final filtered = entries.where((e) {
-                  if (_languageFilter != null && e.language != _languageFilter) {
+                  if (!_matchesSourceFilter(e, widget.initialFilter)) {
+                    return false;
+                  }
+                  if (_languageFilter != null &&
+                      e.language != _languageFilter) {
                     return false;
                   }
                   if (_query.isEmpty) return true;
@@ -70,8 +73,10 @@ class _VocabularyScreenState extends ConsumerState<VocabularyScreen> {
                   separatorBuilder: (_, _) => const Divider(height: 1),
                   itemBuilder: (ctx, i) {
                     final e = filtered[i];
-                    final seen = e.encounters
-                        .fold<int>(0, (s, en) => s + en.lookupCount);
+                    final seen = e.encounters.fold<int>(
+                      0,
+                      (s, en) => s + en.lookupCount,
+                    );
                     return ListTile(
                       leading: _LangBadge(lang: e.language),
                       title: Text(e.lemma),
@@ -84,8 +89,10 @@ class _VocabularyScreenState extends ConsumerState<VocabularyScreen> {
                       onTap: () {
                         Navigator.of(context).push(
                           MaterialPageRoute(
-                            builder: (_) =>
-                                VocabularyDetailScreen(lemma: e.lemma, language: e.language),
+                            builder: (_) => VocabularyDetailScreen(
+                              lemma: e.lemma,
+                              language: e.language,
+                            ),
                           ),
                         );
                       },
@@ -98,6 +105,25 @@ class _VocabularyScreenState extends ConsumerState<VocabularyScreen> {
         ],
       ),
     );
+  }
+
+  bool _matchesSourceFilter(VocabEntry entry, VocabSourceFilter? filter) {
+    if (filter == null || filter is VocabSourceFilter_All) return true;
+    if (filter is VocabSourceFilter_PaperBook) {
+      return entry.encounters.any(
+        (enc) =>
+            enc.source is VocabSource_Paper &&
+            (enc.source as VocabSource_Paper).bookId == filter.bookId,
+      );
+    }
+    if (filter is VocabSourceFilter_PdfDoc) {
+      return entry.encounters.any(
+        (enc) =>
+            enc.source is VocabSource_Pdf &&
+            (enc.source as VocabSource_Pdf).docId == filter.docId,
+      );
+    }
+    return true;
   }
 
   Widget _filterChip(String label, String? value) {

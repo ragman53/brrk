@@ -7,6 +7,10 @@ import 'package:brrk/src/app/home_providers.dart';
 import 'package:brrk/src/app/markdown_editor.dart';
 import 'package:brrk/src/app/note_draft.dart';
 import 'package:brrk/src/app/note_editor.dart';
+import 'package:brrk/src/app/vocab_disclosure.dart';
+import 'package:brrk/src/app/vocabulary/definition_sheet.dart';
+import 'package:brrk/src/app/vocabulary/vocab_provider.dart';
+import 'package:brrk/src/app/vocabulary/vocabulary_lookup_service.dart';
 import 'package:brrk/src/app/vocabulary/vocabulary_screen.dart';
 import 'package:brrk/src/rust/api/storage.dart' as storage;
 import 'package:brrk/src/rust/api/models.dart';
@@ -23,7 +27,7 @@ class PdfViewerScreen extends ConsumerStatefulWidget {
   /// Optional test seam: if provided, replaces the FRB manual markdown
   /// load (`getPdfManualMarkdown`). If null, FRB is used.
   final Future<PdfManualMarkdownData> Function(String docId)?
-      getPdfManualMarkdownOverride;
+  getPdfManualMarkdownOverride;
 
   const PdfViewerScreen({
     super.key,
@@ -47,6 +51,9 @@ class _PdfViewerScreenState extends ConsumerState<PdfViewerScreen> {
   // F17: PDF notes for the current page.
   List<PdfNote> _pageNotes = [];
   String? _selectedText;
+  String? _selectedContext;
+  int? _selectionStart;
+  int? _selectionEnd;
 
   // Per-page content sections (split by <!-- page: N --> markers).
   List<String> _pageSections = [];
@@ -188,8 +195,7 @@ class _PdfViewerScreenState extends ConsumerState<PdfViewerScreen> {
     if (result == null) return;
     // Reload manual data so the reader reflects the new state.
     try {
-      final fresh =
-          await storage.getPdfManualMarkdown(docId: widget.doc.id);
+      final fresh = await storage.getPdfManualMarkdown(docId: widget.doc.id);
       if (!mounted) return;
       setState(() {
         _manual = fresh;
@@ -209,9 +215,9 @@ class _PdfViewerScreenState extends ConsumerState<PdfViewerScreen> {
       return true;
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Failed to save edit.')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Failed to save edit.')));
       }
       return false;
     }
@@ -227,9 +233,9 @@ class _PdfViewerScreenState extends ConsumerState<PdfViewerScreen> {
       return true;
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Failed to reset.')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Failed to reset.')));
       }
       return false;
     }
@@ -273,7 +279,7 @@ class _PdfViewerScreenState extends ConsumerState<PdfViewerScreen> {
             docId: widget.doc.id,
             pageIndex: _currentPage,
             selectedText: draft.selectedText,
-            selectedSentence: '',
+            selectedSentence: (_selectedContext ?? draft.selectedText).trim(),
             content: draft.content,
             tags: draft.tags,
             createdAt: now,
@@ -295,13 +301,16 @@ class _PdfViewerScreenState extends ConsumerState<PdfViewerScreen> {
       if (!mounted) return;
       setState(() {
         _selectedText = null;
+        _selectedContext = null;
+        _selectionStart = null;
+        _selectionEnd = null;
       });
       await _loadPdfNotes();
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to save note: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Failed to save note: $e')));
     }
   }
 
@@ -331,9 +340,9 @@ class _PdfViewerScreenState extends ConsumerState<PdfViewerScreen> {
       await _loadPdfNotes();
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to delete note: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Failed to delete note: $e')));
     }
   }
 
@@ -342,16 +351,55 @@ class _PdfViewerScreenState extends ConsumerState<PdfViewerScreen> {
     return 'pn-${DateTime.now().toUtc().microsecondsSinceEpoch}';
   }
 
-  void _onPdfLookUpPressed() {
+  Future<void> _onPdfLookUpPressed() async {
+    final sel = _selectedText?.trim() ?? '';
+    if (sel.isEmpty) return;
+    if (!isValidVocabularySelection(sel)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Select one word or short Japanese term.'),
+        ),
+      );
+      return;
+    }
+    final acknowledged = await showVocabDisclosureIfNeeded(context, ref);
+    if (!acknowledged || !mounted) return;
+
+    final lookup = performLookup(
+      ref: ref,
+      selectedText: sel,
+      pageContext: _selectedContext ?? _currentPageContent,
+      startOffset: _selectionStart,
+      endOffset: _selectionEnd,
+      source: VocabSource.pdf(docId: widget.doc.id, pageIndex: _currentPage),
+    );
+
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Vocabulary lookup is not yet available.'),
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      builder: (_) => DefinitionSheet(
+        selectedText: sel,
+        onRemoveWord: () => ref.read(vocabProvider.notifier).refresh(),
+        onOpenVocabulary: () {
+          Navigator.of(context).pop();
+          Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (_) => VocabularyScreen(
+                initialFilter: VocabSourceFilter.pdfDoc(docId: widget.doc.id),
+              ),
+            ),
+          );
+        },
       ),
     );
     setState(() {
       _selectedText = null;
+      _selectedContext = null;
+      _selectionStart = null;
+      _selectionEnd = null;
     });
+    await lookup;
   }
 
   Future<void> _saveLastReadPageImmediate() async {
@@ -380,6 +428,9 @@ class _PdfViewerScreenState extends ConsumerState<PdfViewerScreen> {
       _currentPage = pageIndex.clamp(0, _totalPages - 1);
       _pageNotes = [];
       _selectedText = null;
+      _selectedContext = null;
+      _selectionStart = null;
+      _selectionEnd = null;
     });
     _scheduleLastReadPageSave();
     _loadPdfNotes();
@@ -407,9 +458,7 @@ class _PdfViewerScreenState extends ConsumerState<PdfViewerScreen> {
             onPressed: () => Navigator.of(context).push(
               MaterialPageRoute(
                 builder: (_) => VocabularyScreen(
-                  initialFilter: VocabSourceFilter.pdfDoc(
-                    docId: widget.doc.id,
-                  ),
+                  initialFilter: VocabSourceFilter.pdfDoc(docId: widget.doc.id),
                 ),
               ),
             ),
@@ -457,7 +506,9 @@ class _PdfViewerScreenState extends ConsumerState<PdfViewerScreen> {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   if (_manual?.pages[_currentPage.toString()] != null &&
-                      _manual!.pages[_currentPage.toString()]!.trim().isNotEmpty)
+                      _manual!.pages[_currentPage.toString()]!
+                          .trim()
+                          .isNotEmpty)
                     const Padding(
                       padding: EdgeInsets.only(right: 4),
                       child: Icon(Icons.edit, size: 14),
@@ -532,10 +583,18 @@ class _PdfViewerScreenState extends ConsumerState<PdfViewerScreen> {
                   final end = sel.end.clamp(0, str.length);
                   setState(() {
                     _selectedText = str.substring(start, end).trim();
+                    _selectedContext = str;
+                    _selectionStart = start;
+                    _selectionEnd = end;
                   });
                 } else {
                   if (_selectedText != null) {
-                    setState(() => _selectedText = null);
+                    setState(() {
+                      _selectedText = null;
+                      _selectedContext = null;
+                      _selectionStart = null;
+                      _selectionEnd = null;
+                    });
                   }
                 }
               },
@@ -546,7 +605,9 @@ class _PdfViewerScreenState extends ConsumerState<PdfViewerScreen> {
                 p: appearance.paragraphStyle(),
                 blockSpacing: appearance.density.paragraphSpacing,
                 horizontalRuleDecoration: BoxDecoration(
-                  border: Border(top: BorderSide(color: appearance.palette.muted)),
+                  border: Border(
+                    top: BorderSide(color: appearance.palette.muted),
+                  ),
                 ),
               ),
             ),
@@ -627,7 +688,9 @@ class _PdfViewerScreenState extends ConsumerState<PdfViewerScreen> {
           mainAxisSize: MainAxisSize.min,
           children: [
             OutlinedButton.icon(
-              onPressed: _onPdfLookUpPressed,
+              onPressed: isValidVocabularySelection(_selectedText ?? '')
+                  ? _onPdfLookUpPressed
+                  : null,
               icon: const Icon(Icons.menu_book_outlined, size: 16),
               label: const Text('Look up'),
             ),

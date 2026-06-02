@@ -8,6 +8,10 @@ import 'package:brrk/src/app/camera_screen.dart';
 import 'package:brrk/src/app/error_service.dart';
 import 'package:brrk/src/app/home_providers.dart';
 import 'package:brrk/src/app/note_draft.dart';
+import 'package:brrk/src/app/vocab_disclosure.dart';
+import 'package:brrk/src/app/vocabulary/definition_sheet.dart';
+import 'package:brrk/src/app/vocabulary/vocab_provider.dart';
+import 'package:brrk/src/app/vocabulary/vocabulary_lookup_service.dart';
 import 'package:brrk/src/app/vocabulary/vocabulary_screen.dart';
 import 'package:brrk/src/app/note_editor.dart';
 import 'package:brrk/src/app/markdown_editor.dart';
@@ -132,7 +136,10 @@ class _PaperBookDetailScreenState extends ConsumerState<PaperBookDetailScreen> {
             tooltip: 'Edit page Markdown',
             onPressed: pages.isEmpty
                 ? null
-                : () => _openMarkdownEditor(pages[_selectedIndex], _selectedIndex),
+                : () => _openMarkdownEditor(
+                    pages[_selectedIndex],
+                    _selectedIndex,
+                  ),
           ),
           IconButton(
             icon: const Icon(Icons.text_fields),
@@ -167,6 +174,7 @@ class _PaperBookDetailScreenState extends ConsumerState<PaperBookDetailScreen> {
               onDeletePage: _deletePage,
               onEditPageLabel: _editPageLabel,
               onEditPageMarkdown: _openMarkdownEditor,
+              onLookUp: _lookUpPaperSelection,
             ),
       floatingActionButton: pages.isNotEmpty
           ? FloatingActionButton(
@@ -461,8 +469,8 @@ class _PaperBookDetailScreenState extends ConsumerState<PaperBookDetailScreen> {
   }
 
   Future<void> _openMarkdownEditor(PaperPage page, int index) async {
-    final displayed = page.manualMarkdown != null &&
-            page.manualMarkdown!.trim().isNotEmpty
+    final displayed =
+        page.manualMarkdown != null && page.manualMarkdown!.trim().isNotEmpty
         ? page.manualMarkdown!
         : page.markdown;
     final result = await Navigator.of(context).push<MarkdownEditorResult>(
@@ -471,7 +479,8 @@ class _PaperBookDetailScreenState extends ConsumerState<PaperBookDetailScreen> {
           title: 'Edit page Markdown',
           subtitle: 'Paper page',
           initialText: displayed,
-          hasManualEdit: page.manualMarkdown != null &&
+          hasManualEdit:
+              page.manualMarkdown != null &&
               page.manualMarkdown!.trim().isNotEmpty,
           onSave: (t) => _saveManualMarkdown(page, t),
           onReset: () => _clearManualMarkdown(page),
@@ -493,9 +502,9 @@ class _PaperBookDetailScreenState extends ConsumerState<PaperBookDetailScreen> {
       return true;
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Failed to save edit.')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Failed to save edit.')));
       }
       return false;
     }
@@ -512,12 +521,63 @@ class _PaperBookDetailScreenState extends ConsumerState<PaperBookDetailScreen> {
       return true;
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Failed to reset.')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Failed to reset.')));
       }
       return false;
     }
+  }
+
+  Future<bool> _lookUpPaperSelection({
+    required PaperPage page,
+    required String selectedText,
+    required String pageContext,
+    required int? startOffset,
+    required int? endOffset,
+  }) async {
+    final normalized = selectedText.trim();
+    if (!isValidVocabularySelection(normalized)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Select one word or short Japanese term.'),
+        ),
+      );
+      return false;
+    }
+    final acknowledged = await showVocabDisclosureIfNeeded(context, ref);
+    if (!acknowledged || !mounted || _book == null) return false;
+
+    final lookup = performLookup(
+      ref: ref,
+      selectedText: normalized,
+      pageContext: pageContext,
+      startOffset: startOffset,
+      endOffset: endOffset,
+      source: VocabSource.paper(bookId: _book!.id, pageId: page.id),
+    );
+
+    if (!mounted) return true;
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      builder: (_) => DefinitionSheet(
+        selectedText: normalized,
+        onRemoveWord: () => ref.read(vocabProvider.notifier).refresh(),
+        onOpenVocabulary: () {
+          Navigator.of(context).pop();
+          Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (_) => VocabularyScreen(
+                initialFilter: VocabSourceFilter.paperBook(bookId: _book!.id),
+              ),
+            ),
+          );
+        },
+      ),
+    );
+    await lookup;
+    return true;
   }
 }
 
@@ -570,6 +630,14 @@ class _PagesBody extends StatefulWidget {
   final Future<void> Function(PaperPage page, int index) onDeletePage;
   final Future<void> Function(PaperPage page, int index) onEditPageLabel;
   final Future<void> Function(PaperPage page, int index) onEditPageMarkdown;
+  final Future<bool> Function({
+    required PaperPage page,
+    required String selectedText,
+    required String pageContext,
+    required int? startOffset,
+    required int? endOffset,
+  })
+  onLookUp;
 
   const _PagesBody({
     required this.book,
@@ -580,6 +648,7 @@ class _PagesBody extends StatefulWidget {
     required this.onDeletePage,
     required this.onEditPageLabel,
     required this.onEditPageMarkdown,
+    required this.onLookUp,
   });
 
   @override
@@ -634,8 +703,7 @@ class _PagesBodyState extends State<_PagesBody> {
       MaterialPageRoute(
         builder: (_) => NoteEditorScreen(
           title: existingNote != null ? 'Edit Note' : 'Add Note',
-          selectedText:
-              selectedText ?? existingNote?.selectedText,
+          selectedText: selectedText ?? existingNote?.selectedText,
           startOffset: startOffset ?? existingNote?.startOffset,
           endOffset: endOffset ?? existingNote?.endOffset,
           initialContent: existingNote?.content,
@@ -786,6 +854,19 @@ class _PagesBodyState extends State<_PagesBody> {
             onEditNote: (note) =>
                 _openNoteEditor(pages[_selectedIndex], existingNote: note),
             onDeleteNote: (note) => _deleteNote(note, pages[_selectedIndex].id),
+            onLookUp:
+                ({
+                  required selectedText,
+                  required pageContext,
+                  required startOffset,
+                  required endOffset,
+                }) => widget.onLookUp(
+                  page: pages[_selectedIndex],
+                  selectedText: selectedText,
+                  pageContext: pageContext,
+                  startOffset: startOffset,
+                  endOffset: endOffset,
+                ),
           ),
         ),
       ],
@@ -807,6 +888,13 @@ class _PageView extends StatefulWidget {
   onAddNote;
   final void Function(Note note) onEditNote;
   final void Function(Note note) onDeleteNote;
+  final Future<bool> Function({
+    required String selectedText,
+    required String pageContext,
+    required int? startOffset,
+    required int? endOffset,
+  })
+  onLookUp;
 
   const _PageView({
     required this.page,
@@ -815,6 +903,7 @@ class _PageView extends StatefulWidget {
     required this.onAddNote,
     required this.onEditNote,
     required this.onDeleteNote,
+    required this.onLookUp,
   });
 
   @override
@@ -828,9 +917,9 @@ class _PageViewState extends State<_PageView> {
 
   String get _displayedText =>
       widget.page.manualMarkdown != null &&
-              widget.page.manualMarkdown!.trim().isNotEmpty
-          ? widget.page.manualMarkdown!
-          : widget.page.markdown;
+          widget.page.manualMarkdown!.trim().isNotEmpty
+      ? widget.page.manualMarkdown!
+      : widget.page.markdown;
 
   @override
   void didUpdateWidget(covariant _PageView oldWidget) {
@@ -879,20 +968,16 @@ class _PageViewState extends State<_PageView> {
     });
   }
 
-  /// F18 placeholder: disabled in this build because the vocabulary lookup
-  /// service and definition sheet are not yet wired. Selecting a single
-  /// English word or short Japanese term and tapping Look up will open
-  /// the definition bottom sheet. F17 ships the button so the
-  /// selected-text strip is parity-ready.
-  void _onLookUpPressed() {
+  Future<void> _onLookUpPressed() async {
     final sel = _selectedText?.trim() ?? '';
     if (sel.isEmpty) return;
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Vocabulary lookup is not yet available.'),
-      ),
+    final started = await widget.onLookUp(
+      selectedText: sel,
+      pageContext: _displayedText,
+      startOffset: _selectionStart,
+      endOffset: _selectionEnd,
     );
+    if (!mounted || !started) return;
     setState(() {
       _selectedText = null;
       _selectionStart = null;
@@ -964,7 +1049,9 @@ class _PageViewState extends State<_PageView> {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   OutlinedButton.icon(
-                    onPressed: _onLookUpPressed,
+                    onPressed: isValidVocabularySelection(_selectedText ?? '')
+                        ? _onLookUpPressed
+                        : null,
                     icon: const Icon(Icons.menu_book_outlined, size: 16),
                     label: const Text('Look up'),
                   ),

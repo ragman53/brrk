@@ -673,7 +673,11 @@ pub(crate) fn save_pdf_note(note: PdfNote) -> Result<(), StorageError> {
         )));
     }
     let mut data: PdfNotesData = read_json_or_default(&notes_path)?;
-    if let Some(pos) = data.notes.iter().position(|n| n.id == note.id) {
+    if let Some(pos) = data
+        .notes
+        .iter()
+        .position(|n| n.id == note.id && n.doc_id == note.doc_id)
+    {
         data.notes[pos] = note;
     } else {
         data.notes.push(note);
@@ -686,7 +690,28 @@ pub(crate) fn get_pdf_notes(
     page_index: Option<i32>,
 ) -> Result<Vec<PdfNote>, StorageError> {
     validate_storage_id("doc id", &doc_id)?;
+    if let Some(p) = page_index {
+        if p < 0 {
+            return Err(StorageError::ValidationError(
+                "page_index must be non-negative".to_string(),
+            ));
+        }
+    }
     let data_dir = app::data_dir().ok_or(StorageError::NotInitialized)?;
+    let docs: PdfDocsData = read_json(&data_dir.join(FILE_PDF_DOCS))?;
+    let doc = docs
+        .docs
+        .iter()
+        .find(|d| d.id == doc_id)
+        .ok_or_else(|| StorageError::NotFound(format!("doc_id '{}' not found", doc_id)))?;
+    if let Some(p) = page_index {
+        if p >= doc.page_count {
+            return Err(StorageError::ValidationError(format!(
+                "page_index {} out of range (page_count {})",
+                p, doc.page_count
+            )));
+        }
+    }
     let path = data_dir.join(FILE_PDF_NOTES);
     let data: PdfNotesData = read_json_or_default(&path)?;
     Ok(data
@@ -761,20 +786,23 @@ pub(crate) fn list_vocabulary(
     Ok(filtered)
 }
 
-/// Look up an existing vocab entry by `(language, lemma)`. Used by the
-/// `vocab` module to check the cache before calling Mistral.
+/// Look up an existing vocab entry by `(language, surface_or_lemma)`. Used by
+/// the `vocab` module to check the cache before calling Mistral.
 pub(crate) fn find_vocab_entry(
     language: &str,
-    lemma: &str,
+    surface_or_lemma: &str,
 ) -> Result<Option<VocabEntry>, StorageError> {
     let data_dir = app::data_dir().ok_or(StorageError::NotInitialized)?;
     let path = data_dir.join(FILE_VOCAB);
     let data: VocabData = read_json_or_default(&path)?;
-    let lemma_lower = lemma.to_ascii_lowercase();
-    Ok(data
-        .entries
-        .into_iter()
-        .find(|e| e.language == language && e.lemma.to_ascii_lowercase() == lemma_lower))
+    let needle = surface_or_lemma.to_ascii_lowercase();
+    Ok(data.entries.into_iter().find(|e| {
+        e.language == language
+            && (e.lemma.to_ascii_lowercase() == needle
+                || e.surface_forms
+                    .iter()
+                    .any(|s| s.to_ascii_lowercase() == needle))
+    }))
 }
 
 pub(crate) fn update_vocabulary_definition(
