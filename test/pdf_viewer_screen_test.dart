@@ -44,5 +44,15 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.byIcon(Icons.text_fields), findsOneWidget);
     });
+
+    testWidgets('AppBar has edit page Markdown icon', (tester) async {
+      await tester.pumpWidget(
+        ProviderScope(
+          child: MaterialApp(home: PdfViewerScreen(doc: doc)),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(find.byIcon(Icons.edit_outlined), findsOneWidget);
+    });
   });
 }

@@ -4,6 +4,7 @@ import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:brrk/src/app/reading_appearance.dart';
 import 'package:brrk/src/app/home_providers.dart';
+import 'package:brrk/src/app/markdown_editor.dart';
 import 'package:brrk/src/rust/api/storage.dart' as storage;
 import 'package:brrk/src/rust/api/models.dart';
 
@@ -24,6 +25,7 @@ class _PdfViewerScreenState extends ConsumerState<PdfViewerScreen> {
   String? _error;
   int _currentPage = 0;
   late int _totalPages;
+  PdfManualMarkdownData? _manual;
 
   // Per-page content sections (split by <!-- page: N --> markers).
   List<String> _pageSections = [];
@@ -58,6 +60,8 @@ class _PdfViewerScreenState extends ConsumerState<PdfViewerScreen> {
     });
     try {
       final content = await storage.getPdfMarkdown(docId: widget.doc.id);
+      final manual =
+          await storage.getPdfManualMarkdown(docId: widget.doc.id);
       final sections = _splitByPageMarkers(content);
       final toc = _extractToc(content);
 
@@ -65,6 +69,7 @@ class _PdfViewerScreenState extends ConsumerState<PdfViewerScreen> {
         _fullMarkdown = content;
         _pageSections = sections;
         _tocEntries = toc;
+        _manual = manual;
         _loading = false;
         _currentPage = widget.doc.lastReadPageIndex.clamp(0, _totalPages - 1);
       });
@@ -140,6 +145,71 @@ class _PdfViewerScreenState extends ConsumerState<PdfViewerScreen> {
     });
   }
 
+  Future<void> _openMarkdownEditor() async {
+    final displayed = _currentPageContent;
+    final hasOverride = _manual?.pages[_currentPage.toString()] != null;
+    final result = await Navigator.of(context).push<MarkdownEditorResult>(
+      MaterialPageRoute<MarkdownEditorResult>(
+        builder: (_) => MarkdownEditorScreen(
+          title: 'Edit page Markdown',
+          subtitle: 'PDF page ${_currentPage + 1} of $_totalPages',
+          initialText: displayed,
+          hasManualEdit: hasOverride,
+          onSave: _savePdfManual,
+          onReset: _clearPdfManual,
+        ),
+      ),
+    );
+    if (result == null) return;
+    // Reload manual data so the reader reflects the new state.
+    try {
+      final fresh =
+          await storage.getPdfManualMarkdown(docId: widget.doc.id);
+      if (!mounted) return;
+      setState(() {
+        _manual = fresh;
+      });
+    } catch (_) {
+      // Ignore; UI will re-fetch on next page change.
+    }
+  }
+
+  Future<bool> _savePdfManual(String newText) async {
+    try {
+      await storage.savePdfPageManualMarkdown(
+        docId: widget.doc.id,
+        pageIndex: _currentPage,
+        manualMarkdown: newText,
+      );
+      return true;
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Failed to save edit.')),
+        );
+      }
+      return false;
+    }
+  }
+
+  Future<bool> _clearPdfManual() async {
+    try {
+      await storage.savePdfPageManualMarkdown(
+        docId: widget.doc.id,
+        pageIndex: _currentPage,
+        manualMarkdown: null,
+      );
+      return true;
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Failed to reset.')),
+        );
+      }
+      return false;
+    }
+  }
+
   Future<void> _saveLastReadPageImmediate() async {
     final updatedDoc = PdfDoc(
       id: widget.doc.id,
@@ -169,6 +239,10 @@ class _PdfViewerScreenState extends ConsumerState<PdfViewerScreen> {
   }
 
   String get _currentPageContent {
+    final override = _manual?.pages[_currentPage.toString()];
+    if (override != null && override.trim().isNotEmpty) {
+      return override;
+    }
     if (_pageSections.isEmpty) return _fullMarkdown;
     if (_currentPage < _pageSections.length) return _pageSections[_currentPage];
     return _pageSections.isNotEmpty ? _pageSections.last : _fullMarkdown;
@@ -180,6 +254,11 @@ class _PdfViewerScreenState extends ConsumerState<PdfViewerScreen> {
       appBar: AppBar(
         title: Text(widget.doc.title),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.edit_outlined),
+            tooltip: 'Edit page Markdown',
+            onPressed: _loading ? null : _openMarkdownEditor,
+          ),
           IconButton(
             icon: const Icon(Icons.text_fields),
             tooltip: 'Reading appearance',
@@ -214,9 +293,20 @@ class _PdfViewerScreenState extends ConsumerState<PdfViewerScreen> {
           Center(
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 8),
-              child: Text(
-                'Page ${_currentPage + 1} / $_totalPages',
-                style: const TextStyle(fontSize: 14),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (_manual?.pages[_currentPage.toString()] != null &&
+                      _manual!.pages[_currentPage.toString()]!.trim().isNotEmpty)
+                    const Padding(
+                      padding: EdgeInsets.only(right: 4),
+                      child: Icon(Icons.edit, size: 14),
+                    ),
+                  Text(
+                    'Page ${_currentPage + 1} / $_totalPages',
+                    style: const TextStyle(fontSize: 14),
+                  ),
+                ],
               ),
             ),
           ),
