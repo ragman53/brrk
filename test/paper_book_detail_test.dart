@@ -166,5 +166,80 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.byIcon(Icons.text_fields), findsOneWidget);
     });
+
+    testWidgets('uses manual markdown when present', (tester) async {
+      final manualPage = PaperPage(
+        id: 'page-1',
+        imagePath: 'images/book-1/page-1.jpg',
+        pageLabel: null,
+        ocrHash: 'sha256:abc',
+        markdown: 'Original OCR text',
+        manualMarkdown: 'Edited text',
+        notes: const [],
+      );
+      final book = makeBook(pages: [manualPage]);
+      await tester.pumpWidget(
+        wrap(
+          PaperBookDetailScreen(
+            bookId: book.id,
+            getBooks: () async => booksOf(book),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(find.text('Edited text'), findsOneWidget);
+      expect(find.text('Original OCR text'), findsNothing);
+    });
+
+    testWidgets('falls back to original markdown when manual is null', (tester) async {
+      final book = makeBook();
+      await tester.pumpWidget(
+        wrap(
+          PaperBookDetailScreen(
+            bookId: book.id,
+            getBooks: () async => booksOf(book),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(find.textContaining('extracted text'), findsOneWidget);
+    });
+
+    testWidgets('AppBar has edit page Markdown icon', (tester) async {
+      final book = makeBook();
+      await tester.pumpWidget(
+        wrap(
+          PaperBookDetailScreen(
+            bookId: book.id,
+            getBooks: () async => booksOf(book),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(find.byIcon(Icons.edit_outlined), findsOneWidget);
+    });
+
+    testWidgets('shows edit indicator on chip when page has manual edit', (tester) async {
+      final manualPage = PaperPage(
+        id: 'page-1',
+        imagePath: 'images/book-1/page-1.jpg',
+        pageLabel: null,
+        ocrHash: 'sha256:abc',
+        markdown: 'Original',
+        manualMarkdown: 'Edited',
+        notes: const [],
+      );
+      final book = makeBook(pages: [manualPage]);
+      await tester.pumpWidget(
+        wrap(
+          PaperBookDetailScreen(
+            bookId: book.id,
+            getBooks: () async => booksOf(book),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(find.byIcon(Icons.edit), findsOneWidget);
+    });
   });
 }

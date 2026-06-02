@@ -7,6 +7,7 @@ import 'package:brrk/src/app/camera_screen.dart';
 import 'package:brrk/src/app/error_service.dart';
 import 'package:brrk/src/app/home_providers.dart';
 import 'package:brrk/src/app/note_editor.dart';
+import 'package:brrk/src/app/markdown_editor.dart';
 import 'package:brrk/src/app/ocr_disclosure.dart';
 import 'package:brrk/src/app/reading_appearance.dart';
 import 'package:brrk/src/app/settings_screen.dart';
@@ -30,6 +31,7 @@ class _PaperBookDetailScreenState extends ConsumerState<PaperBookDetailScreen> {
   PaperBook? _book;
   bool _loading = false;
   String? _loadError;
+  int _selectedIndex = 0;
 
   @override
   void initState() {
@@ -108,6 +110,13 @@ class _PaperBookDetailScreenState extends ConsumerState<PaperBookDetailScreen> {
         title: Text(_book!.title),
         actions: [
           IconButton(
+            icon: const Icon(Icons.edit_outlined),
+            tooltip: 'Edit page Markdown',
+            onPressed: pages.isEmpty
+                ? null
+                : () => _openMarkdownEditor(pages[_selectedIndex], _selectedIndex),
+          ),
+          IconButton(
             icon: const Icon(Icons.text_fields),
             tooltip: 'Reading appearance',
             onPressed: () => showModalBottomSheet(
@@ -134,10 +143,12 @@ class _PaperBookDetailScreenState extends ConsumerState<PaperBookDetailScreen> {
           : _PagesBody(
               book: _book!,
               readingAppearance: readingAppearance,
-              selectedIndex: 0,
+              selectedIndex: _selectedIndex,
+              onSelectedIndexChanged: (i) => setState(() => _selectedIndex = i),
               onAddPage: _openCamera,
               onDeletePage: _deletePage,
               onEditPageLabel: _editPageLabel,
+              onEditPageMarkdown: _openMarkdownEditor,
             ),
       floatingActionButton: pages.isNotEmpty
           ? FloatingActionButton(
@@ -428,6 +439,66 @@ class _PaperBookDetailScreenState extends ConsumerState<PaperBookDetailScreen> {
     }
     controller.dispose();
   }
+
+  Future<void> _openMarkdownEditor(PaperPage page, int index) async {
+    final displayed = page.manualMarkdown != null &&
+            page.manualMarkdown!.trim().isNotEmpty
+        ? page.manualMarkdown!
+        : page.markdown;
+    final result = await Navigator.of(context).push<MarkdownEditorResult>(
+      MaterialPageRoute<MarkdownEditorResult>(
+        builder: (_) => MarkdownEditorScreen(
+          title: 'Edit page Markdown',
+          subtitle: 'Paper page',
+          initialText: displayed,
+          hasManualEdit: page.manualMarkdown != null &&
+              page.manualMarkdown!.trim().isNotEmpty,
+          onSave: (t) => _saveManualMarkdown(page, t),
+          onReset: () => _clearManualMarkdown(page),
+        ),
+      ),
+    );
+    if (result == null) return;
+    await _load();
+  }
+
+  Future<bool> _saveManualMarkdown(PaperPage page, String newText) async {
+    try {
+      await storage.savePaperPageManualMarkdown(
+        bookId: _book!.id,
+        pageId: page.id,
+        manualMarkdown: newText,
+        updatedAt: DateTime.now().toUtc().toIso8601String(),
+      );
+      return true;
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Failed to save edit.')),
+        );
+      }
+      return false;
+    }
+  }
+
+  Future<bool> _clearManualMarkdown(PaperPage page) async {
+    try {
+      await storage.savePaperPageManualMarkdown(
+        bookId: _book!.id,
+        pageId: page.id,
+        manualMarkdown: null,
+        updatedAt: DateTime.now().toUtc().toIso8601String(),
+      );
+      return true;
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Failed to reset.')),
+        );
+      }
+      return false;
+    }
+  }
 }
 
 // ─── Empty book body ─────────────────────────────────────────────────────────
@@ -474,17 +545,21 @@ class _PagesBody extends StatefulWidget {
   final PaperBook book;
   final ReadingAppearance readingAppearance;
   final int selectedIndex;
+  final ValueChanged<int> onSelectedIndexChanged;
   final VoidCallback onAddPage;
   final Future<void> Function(PaperPage page, int index) onDeletePage;
   final Future<void> Function(PaperPage page, int index) onEditPageLabel;
+  final Future<void> Function(PaperPage page, int index) onEditPageMarkdown;
 
   const _PagesBody({
     required this.book,
     required this.readingAppearance,
     required this.selectedIndex,
+    required this.onSelectedIndexChanged,
     required this.onAddPage,
     required this.onDeletePage,
     required this.onEditPageLabel,
+    required this.onEditPageMarkdown,
   });
 
   @override
@@ -510,11 +585,18 @@ class _PagesBodyState extends State<_PagesBody> {
   @override
   void didUpdateWidget(covariant _PagesBody oldWidget) {
     super.didUpdateWidget(oldWidget);
+    if (oldWidget.selectedIndex != widget.selectedIndex) {
+      _selectedIndex = widget.selectedIndex;
+    }
     if (oldWidget.book.pages.length != widget.book.pages.length) {
-      _selectedIndex = _selectedIndex.clamp(
+      final clamped = _selectedIndex.clamp(
         0,
         widget.book.pages.isEmpty ? 0 : widget.book.pages.length - 1,
       );
+      if (clamped != _selectedIndex) {
+        _selectedIndex = clamped;
+        widget.onSelectedIndexChanged(clamped);
+      }
     }
   }
 
@@ -627,9 +709,22 @@ class _PagesBodyState extends State<_PagesBody> {
                   onLongPress: () =>
                       _showPageActions(context, pages[index], index),
                   child: ChoiceChip(
-                    label: Text(_chipLabel(pages[index], index)),
+                    label: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(_chipLabel(pages[index], index)),
+                        if (pages[index].manualMarkdown != null &&
+                            pages[index].manualMarkdown!.trim().isNotEmpty) ...[
+                          const SizedBox(width: 4),
+                          const Icon(Icons.edit, size: 12),
+                        ],
+                      ],
+                    ),
                     selected: isSelected,
-                    onSelected: (_) => setState(() => _selectedIndex = index),
+                    onSelected: (_) {
+                      setState(() => _selectedIndex = index);
+                      widget.onSelectedIndexChanged(index);
+                    },
                   ),
                 ),
               );
@@ -692,6 +787,12 @@ class _PageViewState extends State<_PageView> {
   int? _selectionStart;
   int? _selectionEnd;
 
+  String get _displayedText =>
+      widget.page.manualMarkdown != null &&
+              widget.page.manualMarkdown!.trim().isNotEmpty
+          ? widget.page.manualMarkdown!
+          : widget.page.markdown;
+
   @override
   void didUpdateWidget(covariant _PageView oldWidget) {
     super.didUpdateWidget(oldWidget);
@@ -706,6 +807,7 @@ class _PageViewState extends State<_PageView> {
     TextSelection sel,
     SelectionChangedCause? cause,
   ) {
+    final displayed = _displayedText;
     if (!sel.isValid || sel.isCollapsed) {
       setState(() {
         _selectedText = null;
@@ -714,13 +816,13 @@ class _PageViewState extends State<_PageView> {
       });
       return;
     }
-    final start = sel.start.clamp(0, widget.page.markdown.length);
-    final end = sel.end.clamp(0, widget.page.markdown.length);
+    final start = sel.start.clamp(0, displayed.length);
+    final end = sel.end.clamp(0, displayed.length);
     if (end <= start) return;
     setState(() {
       _selectionStart = start;
       _selectionEnd = end;
-      _selectedText = widget.page.markdown.substring(start, end).trim();
+      _selectedText = displayed.substring(start, end).trim();
     });
   }
 
@@ -810,7 +912,7 @@ class _PageViewState extends State<_PageView> {
             child: SingleChildScrollView(
               padding: EdgeInsets.all(appearance.density.paragraphSpacing + 4),
               child: SelectableText(
-                widget.page.markdown,
+                _displayedText,
                 onSelectionChanged: _handleSelectionChanged,
                 style: appearance.bodyStyle,
               ),
