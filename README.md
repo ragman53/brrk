@@ -5,18 +5,18 @@
 </p>
 
 <p align="center">
-  <strong>Turn paper books and PDFs into readable Markdown on Android.</strong>
+  <strong>Turn paper books and PDFs into readable Markdown, notes, and vocabulary on Android.</strong>
 </p>
 
 <p align="center">
-  Android beta · Local-first · BYOK Mistral OCR
+  Android beta · Local-first · BYOK Mistral OCR and vocabulary lookup
 </p>
 
 ---
 
 ## Status
 
-Brrk is currently in **open beta testing** for Android.
+Brrk is currently in **open beta testing** for Android. The latest beta is **0.1.0-beta.2**.
 
 It is useful for early testers who want to:
 
@@ -24,7 +24,8 @@ It is useful for early testers who want to:
 - import PDFs,
 - run OCR with their own Mistral API key,
 - read the result as clean, reflowable Markdown,
-- keep notes and page labels locally.
+- manually fix OCR Markdown when needed,
+- keep notes, page labels, and vocabulary locally.
 
 This is still beta software. Please keep backups of anything important.
 
@@ -53,16 +54,26 @@ This is still beta software. Please keep backups of anything important.
 - Take a photo of a page from a physical book.
 - Adjust crop before OCR.
 - Save OCR text as Markdown.
+- Manually edit OCR Markdown per page while keeping the original OCR text available for reset.
 - Add page labels such as `p. 12`, `xv`, or custom labels.
-- Add notes and tags to captured text.
+- Select text to add notes or look up vocabulary.
 
 ### PDFs
 
 - Import local PDF files.
 - Run OCR with Mistral.
 - Read extracted Markdown page by page.
+- Manually edit OCR Markdown per page while keeping the original OCR text available for reset.
 - Resume from the last-read page.
+- Select text to add PDF notes or look up vocabulary.
 - Delete imported PDFs and cached OCR data from inside the app.
+
+### Vocabulary
+
+- Look up selected English words and short Japanese terms from paper or PDF readers.
+- Save editable definitions and example encounters locally.
+- Browse a global vocabulary list or filter by paper book / PDF.
+- Remove saved words or individual encounters.
 
 ### Reading appearance
 
@@ -75,17 +86,23 @@ This is still beta software. Please keep backups of anything important.
 ## Install the beta
 
 1. Open the latest GitHub Release.
-2. Download the Android APK.
+2. Download `brrk-v0.1.0-beta.2-android.apk`.
 3. Optionally verify the SHA256 checksum published with the APK.
 4. Install the APK on Android.
+
+Current beta checksum:
+
+```text
+f8ebd61942bd67217c429a2b1589e4e5b9c79dc32a44ee4e0025d84f9371f9e6  brrk-v0.1.0-beta.2-android.apk
+```
 
 Android may show a warning because this is installed outside the Play Store. You may need to allow installation from your browser or file manager.
 
 ### Requirements
 
 - Android 8.0 / API 26 or newer
-- Internet access for OCR
-- A Mistral API key for OCR features
+- Internet access for OCR and vocabulary lookup
+- A Mistral API key for OCR and vocabulary lookup features
 
 You can create a Mistral API key from:
 
@@ -101,8 +118,9 @@ Important details:
 
 - Your Mistral API key is stored locally on your Android device using secure storage.
 - When you start OCR, the selected PDF or captured page image is sent directly to Mistral OCR using your API key.
-- OCR usage may be billed to your Mistral account.
-- Imported PDFs, captured page images, OCR Markdown, notes, tags, and cache data are stored in app-private local storage.
+- When you look up vocabulary, Brrk sends the selected word/term and its containing sentence to Mistral Chat using your API key. It does not send the full page or full document for vocabulary lookup.
+- OCR and vocabulary usage may be billed to your Mistral account. Small definition lookups may fit within Mistral's current free API mode, subject to Mistral's limits and pricing.
+- Imported PDFs, captured page images, OCR Markdown, manual edits, notes, tags, vocabulary, and cache data are stored in app-private local storage.
 - Android full-data backup is disabled for Brrk.
 - Uninstalling the app removes app-private local data from the device.
 
@@ -115,7 +133,7 @@ Please do not share bug reports containing API keys, private documents, OCR resp
 Brrk uses only the permissions needed for the current beta:
 
 - **Camera** — capture physical book pages.
-- **Internet** — send user-selected files/images to Mistral OCR.
+- **Internet** — send user-selected files/images to Mistral OCR and selected terms/sentences to Mistral Chat for vocabulary lookup.
 
 PDF import uses Android's file picker.
 
@@ -124,7 +142,7 @@ PDF import uses Android's file picker.
 ## Known limitations
 
 - Android only.
-- OCR requires your own Mistral API key.
+- OCR and vocabulary lookup require your own Mistral API key.
 - No cloud sync.
 - No user accounts.
 - No analytics.
@@ -135,10 +153,7 @@ PDF import uses Android's file picker.
 
 ## What's next
 
-The next beta releases are expected to add:
-
-- **Manual Markdown edit** — fix minor OCR mistakes on a per-page basis without losing the original OCR text.
-- **Vocabulary collection** — long-press a word in the reader to look up its definition (English or Japanese) and keep a personal word list across books. Uses the same Mistral API key and follows the same free-tier eligibility as OCR.
+Possible future work includes Play Store testing, import/export improvements, and reading/vocabulary polish based on beta feedback.
 
 ---
 
