@@ -2,7 +2,7 @@ name: brrk
 description: "Local-first Android reading support for paper books and PDFs with BYOK Mistral OCR."
 publish_to: 'none'
 
-version: 0.1.0-beta.1
+version: 0.1.0-beta.2+2
 
 environment:
   sdk: ^3.11.5
