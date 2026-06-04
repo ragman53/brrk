@@ -119,6 +119,44 @@ body::before {
   font-weight: 800;
 }
 
+.brand-logo {
+  justify-self: start;
+  display: inline-grid;
+  grid-template-columns: 42px auto;
+  align-items: center;
+  gap: 10px;
+  color: var(--ink);
+  font-weight: 900;
+  text-decoration: none;
+}
+
+.brand-logo img {
+  width: 42px;
+  height: 42px;
+  display: block;
+  border: 2px solid var(--rule);
+  background: var(--paper);
+  clip-path: polygon(0 0, calc(100% - 9px) 0, 100% 9px, 100% 100%, 9px 100%, 0 calc(100% - 9px));
+  image-rendering: auto;
+}
+
+.brand-logo span {
+  letter-spacing: 0.08em;
+}
+
+.brand-logo:hover,
+.brand-logo:focus-visible {
+  color: var(--paper);
+  background: var(--accent);
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}
+
+.brand-logo:hover img,
+.brand-logo:focus-visible img {
+  border-color: var(--accent);
+}
+
 .brand-right {
   text-align: right;
 }
