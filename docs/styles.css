@@ -105,7 +105,7 @@ body::before {
 .top-band {
   display: grid;
   grid-template-columns: 1fr auto 1fr;
-  align-items: start;
+  align-items: center;
   gap: 16px;
   padding-bottom: 26px;
   border-bottom: 3px solid var(--rule);
@@ -122,21 +122,25 @@ body::before {
 .brand-logo {
   justify-self: start;
   display: inline-grid;
-  grid-template-columns: 42px auto;
+  grid-template-columns: 40px auto;
   align-items: center;
   gap: 10px;
+  max-width: max-content;
+  padding: 2px 6px 2px 2px;
   color: var(--ink);
   font-weight: 900;
   text-decoration: none;
 }
 
 .brand-logo img {
-  width: 42px;
-  height: 42px;
+  width: 40px;
+  height: 40px;
   display: block;
+  flex: 0 0 40px;
+  object-fit: cover;
   border: 2px solid var(--rule);
   background: var(--paper);
-  clip-path: polygon(0 0, calc(100% - 9px) 0, 100% 9px, 100% 100%, 9px 100%, 0 calc(100% - 9px));
+  clip-path: polygon(0 0, calc(100% - 8px) 0, 100% 8px, 100% 100%, 8px 100%, 0 calc(100% - 8px));
   image-rendering: auto;
 }
 
