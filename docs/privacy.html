@@ -1,0 +1,149 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Brrk Privacy Policy</title>
+  <meta name="description" content="Privacy Policy for Brrk, an Android reading support app for paper books and PDFs.">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+  <div class="page-shell">
+    <header class="top-band" aria-label="Brrk privacy policy header">
+      <div class="brand-left">Brrk</div>
+      <div class="doc-code">Privacy Policy // GP-01</div>
+      <div class="brand-right">CHIKOB Development</div>
+    </header>
+
+    <section class="memo-grid" aria-label="Document metadata">
+      <div class="memo-label">App</div>
+      <div class="memo-value">Brrk</div>
+      <div class="memo-label">Package</div>
+      <div class="memo-value"><code>com.chikob.brrk</code></div>
+      <div class="memo-label">Developer</div>
+      <div class="memo-value">CHIKOB Development</div>
+      <div class="memo-label">Contact</div>
+      <div class="memo-value"><a href="https://github.com/ragman53/brrk/issues">GitHub Issues</a></div>
+      <div class="memo-label">Effective</div>
+      <div class="memo-value">2026-06-03</div>
+    </section>
+
+    <main id="main">
+      <section class="hero">
+        <div>
+          <span class="kicker">Required public disclosure</span>
+          <h1>Privacy Policy.</h1>
+          <p class="lede">This Privacy Policy explains how Brrk accesses, collects, uses, shares, protects, retains, and deletes user data.</p>
+        </div>
+        <div class="stamp" aria-label="Privacy policy stamp">No Ads<br>No Tracking</div>
+      </section>
+
+      <nav class="nav-ledger" aria-label="Policy navigation">
+        <a href="index.html"><strong>Policy Desk</strong><span>Return to the public policy index.</span></a>
+        <a href="terms.html"><strong>Terms</strong><span>Read the beta Terms of Use.</span></a>
+        <a href="https://github.com/ragman53/brrk"><strong>Repository</strong><span>Open-source project repository.</span></a>
+      </nav>
+
+      <section class="notice">
+        <strong>Short version:</strong> Brrk is local-first. It has no account system, no ads, no analytics, and no telemetry. Network requests happen when you choose to run OCR or vocabulary lookup with your own Mistral API key.
+      </section>
+
+      <h2>1. Who provides Brrk</h2>
+      <p>Brrk is provided by CHIKOB Development. For privacy inquiries, deletion questions, or security concerns, submit a request through <a href="https://github.com/ragman53/brrk/issues">GitHub Issues</a>.</p>
+      <p>If the Google Play store listing names a different developer entity, that listing entity is also the responsible developer for this policy.</p>
+
+      <h2>2. Data Brrk stores on your device</h2>
+      <p>Brrk stores the following data locally in app-private Android storage:</p>
+      <ul>
+        <li>Paper book records, page labels, and captured page image file references.</li>
+        <li>Imported PDF records and local PDF file references.</li>
+        <li>OCR Markdown generated from paper pages or PDFs.</li>
+        <li>Manual Markdown edits that you save.</li>
+        <li>Notes, tags, PDF notes, vocabulary definitions, and vocabulary encounter examples.</li>
+        <li>OCR cache records used to avoid duplicate OCR requests for the same image or PDF.</li>
+        <li>Reading appearance preferences and one-time disclosure acknowledgements.</li>
+      </ul>
+      <p>Your Mistral API key is stored locally using Android secure storage. Brrk does not operate a server that receives or stores your app data.</p>
+
+      <h2>3. Data Brrk sends off your device</h2>
+      <p>Brrk sends data off your device only for app features you start:</p>
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Feature</th>
+            <th>Data sent</th>
+            <th>Recipient</th>
+            <th>Purpose</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Paper OCR</td>
+            <td>The captured/cropped page image and your Mistral API key in the authorization header.</td>
+            <td>Mistral OCR API</td>
+            <td>Convert the selected image into Markdown text.</td>
+          </tr>
+          <tr>
+            <td>PDF OCR</td>
+            <td>The selected PDF file and your Mistral API key in the authorization header.</td>
+            <td>Mistral OCR API</td>
+            <td>Convert the selected PDF into Markdown text.</td>
+          </tr>
+          <tr>
+            <td>Vocabulary lookup</td>
+            <td>The selected word or short term, its containing sentence, source metadata, and your Mistral API key in the authorization header.</td>
+            <td>Mistral Chat Completions API</td>
+            <td>Generate a short definition and normalized vocabulary entry.</td>
+          </tr>
+        </tbody>
+      </table>
+      <p>For vocabulary lookup, Brrk sends only the selected word/term and its containing sentence. It does not send the full page or full document for vocabulary lookup.</p>
+
+      <h2>4. Third parties and sharing</h2>
+      <p>Brrk uses Mistral AI as a third-party service provider for OCR and vocabulary lookup when you start those features. Mistral's handling of data sent to its APIs is governed by Mistral's own terms and privacy practices.</p>
+      <p>Brrk does not sell personal or sensitive user data. Brrk does not share user data for advertising, analytics, tracking, or marketing.</p>
+
+      <h2>5. Permissions</h2>
+      <ul>
+        <li><strong>Camera:</strong> used only to capture physical book pages when you start capture.</li>
+        <li><strong>Internet:</strong> used for Mistral OCR and vocabulary lookup requests.</li>
+      </ul>
+      <p>PDF import uses Android's system file picker. Brrk does not request broad storage access for PDF import.</p>
+
+      <h2>6. Security</h2>
+      <ul>
+        <li>Network requests to Mistral use HTTPS.</li>
+        <li>Your Mistral API key is stored through Android secure storage.</li>
+        <li>App data is stored in app-private storage.</li>
+        <li>Android full-data backup is disabled for Brrk.</li>
+      </ul>
+      <p>No app can guarantee absolute security, especially when data is sent to third-party services at your request. Keep your device, operating system, and API credentials secure.</p>
+
+      <h2>7. Retention and deletion</h2>
+      <p>Local app data remains on your device until you delete it in the app, clear app data, or uninstall Brrk.</p>
+      <ul>
+        <li>You can delete imported PDFs and paper books in the app.</li>
+        <li>You can delete notes, vocabulary entries, and vocabulary encounters in the app.</li>
+        <li>You can clear OCR cache data from Settings.</li>
+        <li>Uninstalling Brrk removes app-private local data from the device.</li>
+      </ul>
+      <p>Brrk has no account system, so there is no Brrk account to delete. For data sent to Mistral, consult Mistral's policies and account controls.</p>
+
+      <h2>8. Children</h2>
+      <p>Brrk is not directed to children. Do not use Brrk to process children's personal data unless you have the necessary rights and consent to do so.</p>
+
+      <h2>9. Changes to this policy</h2>
+      <p>This policy may be updated as Brrk changes. The effective date at the top of this page indicates the latest revision.</p>
+
+      <h2>10. Contact</h2>
+      <p>Privacy inquiries can be submitted at <a href="https://github.com/ragman53/brrk/issues">https://github.com/ragman53/brrk/issues</a>.</p>
+    </main>
+
+    <footer class="footer-ledger">
+      <div>Privacy Policy // Brrk // Effective 2026-06-03</div>
+      <div><a href="index.html">Policy desk</a></div>
+    </footer>
+  </div>
+</body>
+</html>
