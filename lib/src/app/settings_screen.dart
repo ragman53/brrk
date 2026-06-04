@@ -5,6 +5,9 @@ import 'package:brrk/src/app/reading_appearance.dart';
 import 'package:brrk/src/rust/api/storage.dart' as storage;
 import 'package:url_launcher/url_launcher.dart';
 
+const _privacyPolicyUrl = 'https://ragman53.github.io/brrk/privacy.html';
+const _termsOfUseUrl = 'https://ragman53.github.io/brrk/terms.html';
+
 class SettingsScreen extends ConsumerStatefulWidget {
   const SettingsScreen({super.key});
 
@@ -54,6 +57,16 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       _controller.clear();
       _errorText = null;
     });
+  }
+
+  Future<void> _openUrl(String url) async {
+    final uri = Uri.parse(url);
+    final ok = await launchUrl(uri, mode: LaunchMode.externalApplication);
+    if (!ok && mounted) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Could not open $url')));
+    }
   }
 
   Future<void> _save() async {
@@ -285,6 +298,26 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               context,
             ).textTheme.bodySmall?.copyWith(color: Colors.grey.shade600),
           ),
+          const SizedBox(height: 12),
+          Text(
+            'Before using OCR or vocabulary lookup, review how Brrk sends data to Mistral:',
+            style: Theme.of(context).textTheme.bodySmall,
+          ),
+          Wrap(
+            spacing: 8,
+            children: [
+              TextButton.icon(
+                onPressed: () => _openUrl(_privacyPolicyUrl),
+                icon: const Icon(Icons.privacy_tip_outlined, size: 16),
+                label: const Text('Privacy Policy'),
+              ),
+              TextButton.icon(
+                onPressed: () => _openUrl(_termsOfUseUrl),
+                icon: const Icon(Icons.description_outlined, size: 16),
+                label: const Text('Terms of Use'),
+              ),
+            ],
+          ),
           const SizedBox(height: 16),
 
           // ── P0-4: OCR data-transfer disclosure ────────────────────────────
@@ -317,9 +350,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  'Brrk sends the selected PDF or captured page image '
-                  'directly to Mistral OCR using your credential. '
-                  'Brrk does not operate its own server for this MVP.',
+                  'Brrk sends selected image or PDF content directly to '
+                  'Mistral OCR using your API key to perform OCR. Brrk does '
+                  'not send this content to the Brrk developer.',
                   style: TextStyle(color: Colors.amber.shade900, fontSize: 13),
                 ),
               ],
@@ -376,6 +409,30 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             style: OutlinedButton.styleFrom(
               foregroundColor: Colors.red.shade700,
             ),
+          ),
+
+          const SizedBox(height: 48),
+          const Divider(),
+          const SizedBox(height: 24),
+          Text('Legal', style: Theme.of(context).textTheme.titleMedium),
+          const SizedBox(height: 8),
+          Text(
+            'Public policy pages for Google Play review and user reference.',
+            style: Theme.of(
+              context,
+            ).textTheme.bodySmall?.copyWith(color: Colors.grey.shade600),
+          ),
+          const SizedBox(height: 12),
+          OutlinedButton.icon(
+            onPressed: () => _openUrl(_privacyPolicyUrl),
+            icon: const Icon(Icons.privacy_tip_outlined),
+            label: const Text('Privacy Policy'),
+          ),
+          const SizedBox(height: 8),
+          OutlinedButton.icon(
+            onPressed: () => _openUrl(_termsOfUseUrl),
+            icon: const Icon(Icons.description_outlined),
+            label: const Text('Terms of Use'),
           ),
         ],
       ),

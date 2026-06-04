@@ -7,8 +7,7 @@ const _kVocabAcknowledgedKey = 'vocab_acknowledged';
 
 /// Whether the user has already acknowledged the Mistral Chat data-transfer
 /// notice for vocabulary lookups.
-final vocabDisclosureAcknowledgedProvider =
-    StateProvider<bool>((ref) => false);
+final vocabDisclosureAcknowledgedProvider = StateProvider<bool>((ref) => false);
 
 /// Load the acknowledgement state from persistent storage.
 Future<void> loadVocabDisclosureAcknowledgement(WidgetRef ref) async {
@@ -36,15 +35,16 @@ Future<bool> showVocabDisclosureIfNeeded(
     context: context,
     barrierDismissible: false,
     builder: (ctx) => AlertDialog(
-      title: const Text('Vocabulary lookup uses Mistral'),
+      title: const Text('Vocabulary lookup sends context to Mistral'),
       content: const SingleChildScrollView(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
               'When you look up a word, Brrk sends the selected word and its '
-              'containing sentence to Mistral\u2019s chat API to generate a '
-              'definition. Brrk does not send the full page or document.',
+              'containing sentence to Mistral\u2019s chat API using your API key '
+              'to generate a definition. Brrk does not send the full page or '
+              'document for vocabulary lookup.',
             ),
             SizedBox(height: 12),
             Text(
@@ -62,7 +62,7 @@ Future<bool> showVocabDisclosureIfNeeded(
         ),
         FilledButton(
           onPressed: () => Navigator.pop(ctx, true),
-          child: const Text('I understand'),
+          child: const Text('I understand and look up'),
         ),
       ],
     ),

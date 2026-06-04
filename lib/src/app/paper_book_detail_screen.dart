@@ -335,33 +335,9 @@ class _PaperBookDetailScreenState extends ConsumerState<PaperBookDetailScreen> {
       return;
     }
     if (!mounted) return;
-    // P0-4: check OCR disclosure before first Paper OCR use
-    if (!ref.read(ocrDisclosureAcknowledgedProvider)) {
-      final acknowledged = await showDialog<bool>(
-        context: context,
-        builder: (ctx) => AlertDialog(
-          title: const Text('Data sent to Mistral OCR'),
-          content: const Text(
-            'Brrk sends the selected PDF or captured page image '
-            'directly to Mistral OCR using your credential. '
-            'Brrk does not operate its own server for this MVP.',
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(ctx, false),
-              child: const Text('Cancel'),
-            ),
-            FilledButton(
-              onPressed: () => Navigator.pop(ctx, true),
-              child: const Text('I understand'),
-            ),
-          ],
-        ),
-      );
-      if (acknowledged != true) return;
-      await persistOcrDisclosureAcknowledgement(ref);
-    }
-    if (!mounted) return;
+    // Check OCR disclosure before first Paper OCR use.
+    final acknowledged = await showOcrDisclosureIfNeeded(context, ref);
+    if (!acknowledged || !mounted) return;
     await Navigator.of(
       context,
     ).push(MaterialPageRoute(builder: (_) => CameraScreen(bookId: _book!.id)));

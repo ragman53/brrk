@@ -68,9 +68,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
             tooltip: 'Vocabulary',
             onPressed: () {
               Navigator.of(context).push(
-                MaterialPageRoute(
-                  builder: (_) => const VocabularyScreen(),
-                ),
+                MaterialPageRoute(builder: (_) => const VocabularyScreen()),
               );
             },
           ),
@@ -150,32 +148,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
       ).push(MaterialPageRoute(builder: (_) => const SettingsScreen()));
       return;
     }
-    if (!ref.read(ocrDisclosureAcknowledgedProvider)) {
-      final acknowledged = await showDialog<bool>(
-        context: context,
-        builder: (ctx) => AlertDialog(
-          title: const Text('Data sent to Mistral OCR'),
-          content: const Text(
-            'Brrk sends the selected PDF or captured page image '
-            'directly to Mistral OCR using your credential. '
-            'Brrk does not operate its own server for this MVP.',
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(ctx, false),
-              child: const Text('Cancel'),
-            ),
-            FilledButton(
-              onPressed: () => Navigator.pop(ctx, true),
-              child: const Text('I understand'),
-            ),
-          ],
-        ),
-      );
-      if (acknowledged != true) return;
-      await persistOcrDisclosureAcknowledgement(ref);
-    }
-    if (!context.mounted) return;
+    final acknowledged = await showOcrDisclosureIfNeeded(context, ref);
+    if (!acknowledged || !context.mounted) return;
     startPdfOcr(context, ref);
   }
 
