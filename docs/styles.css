@@ -8,6 +8,9 @@
   --desk: #14281d;
   --shadow: rgba(20, 40, 29, 0.35);
   --paper-fiber: rgba(20, 40, 29, 0.055);
+  --font-body: "Public Sans", "Helvetica Neue", Arial, sans-serif;
+  --font-display: "Archivo Narrow", "Public Sans", "Helvetica Neue", Arial, sans-serif;
+  --font-code: ui-monospace, "SFMono-Regular", "Cascadia Mono", "Liberation Mono", "Courier New", monospace;
   color-scheme: light;
 }
 
@@ -27,9 +30,10 @@ body {
     linear-gradient(90deg, rgba(255, 252, 220, 0.02), transparent 26%, rgba(255, 252, 220, 0.04) 52%, transparent 78%),
     var(--desk);
   color: var(--ink);
-  font-family: ui-monospace, "SFMono-Regular", "Cascadia Mono", "Liberation Mono", "Courier New", monospace;
+  font-family: var(--font-body);
   font-size: 16px;
   line-height: 1.58;
+  font-feature-settings: "tnum" 1, "case" 1;
 }
 
 body::before {
@@ -110,13 +114,14 @@ body::before {
   padding-bottom: 26px;
   border-bottom: 3px solid var(--rule);
   text-transform: uppercase;
-  letter-spacing: 0.08em;
-  font-size: 0.84rem;
+  letter-spacing: 0.09em;
+  font-family: var(--font-display);
+  font-size: 0.92rem;
 }
 
 .brand-left,
 .brand-right {
-  font-weight: 800;
+  font-weight: 700;
 }
 
 .brand-logo {
@@ -128,7 +133,8 @@ body::before {
   max-width: max-content;
   padding: 2px 6px 2px 2px;
   color: var(--ink);
-  font-weight: 900;
+  font-family: var(--font-display);
+  font-weight: 700;
   text-decoration: none;
 }
 
@@ -145,7 +151,7 @@ body::before {
 }
 
 .brand-logo span {
-  letter-spacing: 0.08em;
+  letter-spacing: 0.1em;
 }
 
 .brand-logo:hover,
@@ -168,6 +174,8 @@ body::before {
 .doc-code {
   justify-self: center;
   padding: 3px 8px;
+  font-family: var(--font-display);
+  font-weight: 700;
   border: 2px solid var(--rule);
   background: rgba(25, 118, 210, 0.08);
   white-space: nowrap;
@@ -192,14 +200,16 @@ body::before {
 
 .memo-label {
   text-transform: uppercase;
-  letter-spacing: 0.09em;
-  font-size: 0.78rem;
+  letter-spacing: 0.11em;
+  font-family: var(--font-display);
+  font-size: 0.83rem;
+  font-weight: 700;
   color: var(--muted);
   background: rgba(20, 40, 29, 0.045);
 }
 
 .memo-value {
-  font-weight: 700;
+  font-weight: 600;
 }
 
 .hero {
@@ -214,8 +224,10 @@ h1,
 h2,
 h3 {
   margin: 0;
-  line-height: 1.04;
-  letter-spacing: -0.055em;
+  font-family: var(--font-display);
+  font-weight: 700;
+  line-height: 1.02;
+  letter-spacing: -0.035em;
   text-wrap: balance;
 }
 
@@ -263,7 +275,7 @@ li + li {
   font-size: clamp(1.05rem, 2vw, 1.35rem);
   line-height: 1.45;
   max-width: 62ch;
-  font-weight: 700;
+  font-weight: 600;
 }
 
 .stamp {
@@ -276,11 +288,12 @@ li + li {
   display: grid;
   place-items: center;
   transform: rotate(-4deg);
+  font-family: var(--font-display);
   text-transform: uppercase;
-  letter-spacing: 0.12em;
-  font-weight: 900;
+  letter-spacing: 0.13em;
+  font-weight: 700;
   text-align: center;
-  font-size: clamp(1rem, 2vw, 1.4rem);
+  font-size: clamp(1.1rem, 2.2vw, 1.55rem);
   background: rgba(25, 118, 210, 0.035);
 }
 
@@ -316,8 +329,10 @@ li + li {
 }
 
 .nav-ledger strong {
+  font-family: var(--font-display);
+  font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.1em;
 }
 
 .nav-ledger span {
@@ -348,10 +363,11 @@ li + li {
 .section-number {
   display: inline-block;
   color: var(--accent);
+  font-family: var(--font-display);
   text-transform: uppercase;
-  letter-spacing: 0.11em;
-  font-size: 0.78rem;
-  font-weight: 900;
+  letter-spacing: 0.13em;
+  font-size: 0.84rem;
+  font-weight: 700;
 }
 
 .data-table {
@@ -370,8 +386,10 @@ li + li {
 }
 
 .data-table th {
+  font-family: var(--font-display);
+  font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.1em;
   background: rgba(20, 40, 29, 0.06);
 }
 
@@ -393,7 +411,8 @@ code {
   padding: 0.12em 0.3em;
   border: 1px solid var(--rule);
   background: rgba(20, 40, 29, 0.055);
-  font: inherit;
+  font-family: var(--font-code);
+  font-size: 0.92em;
 }
 
 hr {
@@ -409,9 +428,11 @@ hr {
   display: grid;
   grid-template-columns: 1fr auto;
   gap: 16px;
-  font-size: 0.82rem;
+  font-family: var(--font-display);
+  font-size: 0.9rem;
+  font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.08em;
 }
 
 @media (max-width: 760px) {
