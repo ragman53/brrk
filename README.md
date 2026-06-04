@@ -93,7 +93,7 @@ This is still beta software. Please keep backups of anything important.
 Current beta APK checksum:
 
 ```text
-77db1cdc6a37a7537f75341bcde05dfbf659eafad3ae9f5d6ca45035e1ca72fe  brrk-v0.1.0-beta.2-android.apk
+05c4a472f3f2a6bb6f996c18b71605b18fa223fbc9b28171428f6bbde15a752c  brrk-v0.1.0-beta.2-android.apk
 ```
 
 Android may show a warning because this is installed outside the Play Store. You may need to allow installation from your browser or file manager.

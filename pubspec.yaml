@@ -46,7 +46,7 @@ flutter_launcher_icons:
   android: true
   ios: false
   image_path: "assets/icon/brrk_icon.png"
-  adaptive_icon_background: "assets/icon/brrk_background_icon.png"
-  adaptive_icon_foreground: "assets/icon/brrk_foreground_icon.png"
+  adaptive_icon_background: "assets/icon/brrk_icon.png"
+  adaptive_icon_foreground: "assets/icon/brrk_icon.png"
   min_sdk_android: 26
 
