@@ -55,6 +55,13 @@ class _PdfViewerScreenState extends ConsumerState<PdfViewerScreen> {
   int? _selectionStart;
   int? _selectionEnd;
 
+  // Lookup candidate derived from the raw selection. Used only for the
+  // `Look up` button so long-press over-selection can be recovered
+  // without disturbing the raw selection (which feeds `Add Note`).
+  String? _lookupText;
+  int? _lookupStart;
+  int? _lookupEnd;
+
   // Per-page content sections (split by <!-- page: N --> markers).
   List<String> _pageSections = [];
   // TOC entries: {level: int, text: String}.
@@ -265,8 +272,8 @@ class _PdfViewerScreenState extends ConsumerState<PdfViewerScreen> {
         builder: (ctx) => NoteEditorScreen(
           title: existing != null ? 'Edit Note' : 'Add Note',
           selectedText: existing?.selectedText ?? _selectedText,
-          startOffset: null,
-          endOffset: null,
+          startOffset: existing == null ? _selectionStart : null,
+          endOffset: existing == null ? _selectionEnd : null,
           initialContent: existing?.content,
           initialTags: existing?.tags ?? const [],
         ),
@@ -304,6 +311,9 @@ class _PdfViewerScreenState extends ConsumerState<PdfViewerScreen> {
         _selectedContext = null;
         _selectionStart = null;
         _selectionEnd = null;
+        _lookupText = null;
+        _lookupStart = null;
+        _lookupEnd = null;
       });
       await _loadPdfNotes();
     } catch (e) {
@@ -352,25 +362,17 @@ class _PdfViewerScreenState extends ConsumerState<PdfViewerScreen> {
   }
 
   Future<void> _onPdfLookUpPressed() async {
-    final sel = _selectedText?.trim() ?? '';
-    if (sel.isEmpty) return;
-    if (!isValidVocabularySelection(sel)) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Select one word or short Japanese term.'),
-        ),
-      );
-      return;
-    }
+    final lookupText = _lookupText;
+    if (lookupText == null || lookupText.isEmpty) return;
     final acknowledged = await showVocabDisclosureIfNeeded(context, ref);
     if (!acknowledged || !mounted) return;
 
     final lookup = performLookup(
       ref: ref,
-      selectedText: sel,
+      selectedText: lookupText,
       pageContext: _selectedContext ?? _currentPageContent,
-      startOffset: _selectionStart,
-      endOffset: _selectionEnd,
+      startOffset: _lookupStart,
+      endOffset: _lookupEnd,
       source: VocabSource.pdf(docId: widget.doc.id, pageIndex: _currentPage),
     );
 
@@ -379,7 +381,7 @@ class _PdfViewerScreenState extends ConsumerState<PdfViewerScreen> {
       context: context,
       isScrollControlled: true,
       builder: (_) => DefinitionSheet(
-        selectedText: sel,
+        selectedText: lookupText,
         onRemoveWord: () => ref.read(vocabProvider.notifier).refresh(),
         onOpenVocabulary: () {
           Navigator.of(context).pop();
@@ -398,6 +400,9 @@ class _PdfViewerScreenState extends ConsumerState<PdfViewerScreen> {
       _selectedContext = null;
       _selectionStart = null;
       _selectionEnd = null;
+      _lookupText = null;
+      _lookupStart = null;
+      _lookupEnd = null;
     });
     await lookup;
   }
@@ -431,6 +436,9 @@ class _PdfViewerScreenState extends ConsumerState<PdfViewerScreen> {
       _selectedContext = null;
       _selectionStart = null;
       _selectionEnd = null;
+      _lookupText = null;
+      _lookupStart = null;
+      _lookupEnd = null;
     });
     _scheduleLastReadPageSave();
     _loadPdfNotes();
@@ -568,49 +576,71 @@ class _PdfViewerScreenState extends ConsumerState<PdfViewerScreen> {
     return Column(
       children: [
         _buildNoteChipRow(appearance),
-        if (_selectedText != null && _selectedText!.isNotEmpty)
-          _buildSelectedStrip(appearance),
         Expanded(
-          child: Container(
-            color: appearance.palette.background,
-            child: Markdown(
-              data: _currentPageContent,
-              selectable: true,
-              onSelectionChanged: (text, sel, cause) {
-                final str = text ?? '';
-                if (sel.isValid && !sel.isCollapsed) {
-                  final start = sel.start.clamp(0, str.length);
-                  final end = sel.end.clamp(0, str.length);
-                  setState(() {
-                    _selectedText = str.substring(start, end).trim();
-                    _selectedContext = str;
-                    _selectionStart = start;
-                    _selectionEnd = end;
-                  });
-                } else {
-                  if (_selectedText != null) {
-                    setState(() {
-                      _selectedText = null;
-                      _selectedContext = null;
-                      _selectionStart = null;
-                      _selectionEnd = null;
-                    });
-                  }
-                }
-              },
-              styleSheet: MarkdownStyleSheet(
-                h1: appearance.heading1Style(),
-                h2: appearance.heading2Style(),
-                h3: appearance.heading3Style(),
-                p: appearance.paragraphStyle(),
-                blockSpacing: appearance.density.paragraphSpacing,
-                horizontalRuleDecoration: BoxDecoration(
-                  border: Border(
-                    top: BorderSide(color: appearance.palette.muted),
+          child: Stack(
+            children: [
+              Positioned.fill(
+                child: Container(
+                  color: appearance.palette.background,
+                  child: Markdown(
+                    data: _currentPageContent,
+                    selectable: true,
+                    onSelectionChanged: (text, sel, cause) {
+                      final str = text ?? '';
+                      if (sel.isValid && !sel.isCollapsed) {
+                        final start = sel.start.clamp(0, str.length);
+                        final end = sel.end.clamp(0, str.length);
+                        final candidate = vocabularyCandidateFromSelection(
+                          context: str,
+                          selection: sel,
+                          cause: cause,
+                        );
+                        setState(() {
+                          _selectedText = str.substring(start, end).trim();
+                          _selectedContext = str;
+                          _selectionStart = start;
+                          _selectionEnd = end;
+                          _lookupText = candidate?.text;
+                          _lookupStart = candidate?.start;
+                          _lookupEnd = candidate?.end;
+                        });
+                      } else {
+                        if (_selectedText != null) {
+                          setState(() {
+                            _selectedText = null;
+                            _selectedContext = null;
+                            _selectionStart = null;
+                            _selectionEnd = null;
+                            _lookupText = null;
+                            _lookupStart = null;
+                            _lookupEnd = null;
+                          });
+                        }
+                      }
+                    },
+                    styleSheet: MarkdownStyleSheet(
+                      h1: appearance.heading1Style(),
+                      h2: appearance.heading2Style(),
+                      h3: appearance.heading3Style(),
+                      p: appearance.paragraphStyle(),
+                      blockSpacing: appearance.density.paragraphSpacing,
+                      horizontalRuleDecoration: BoxDecoration(
+                        border: Border(
+                          top: BorderSide(color: appearance.palette.muted),
+                        ),
+                      ),
+                    ),
                   ),
                 ),
               ),
-            ),
+              if (_selectedText != null && _selectedText!.isNotEmpty)
+                Positioned(
+                  left: 0,
+                  right: 0,
+                  top: 0,
+                  child: _buildSelectedStrip(appearance),
+                ),
+            ],
           ),
         ),
       ],
@@ -688,7 +718,7 @@ class _PdfViewerScreenState extends ConsumerState<PdfViewerScreen> {
           mainAxisSize: MainAxisSize.min,
           children: [
             OutlinedButton.icon(
-              onPressed: isValidVocabularySelection(_selectedText ?? '')
+              onPressed: (_lookupText != null && _lookupText!.isNotEmpty)
                   ? _onPdfLookUpPressed
                   : null,
               icon: const Icon(Icons.menu_book_outlined, size: 16),

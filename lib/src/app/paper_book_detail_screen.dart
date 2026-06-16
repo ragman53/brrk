@@ -891,6 +891,13 @@ class _PageViewState extends State<_PageView> {
   int? _selectionStart;
   int? _selectionEnd;
 
+  // Lookup candidate derived from the raw selection. Used only for the
+  // `Look up` button so long-press over-selection can be recovered
+  // without disturbing the raw selection (which feeds `Add Note`).
+  String? _lookupText;
+  int? _lookupStart;
+  int? _lookupEnd;
+
   String get _displayedText =>
       widget.page.manualMarkdown != null &&
           widget.page.manualMarkdown!.trim().isNotEmpty
@@ -904,6 +911,9 @@ class _PageViewState extends State<_PageView> {
       _selectedText = null;
       _selectionStart = null;
       _selectionEnd = null;
+      _lookupText = null;
+      _lookupStart = null;
+      _lookupEnd = null;
     }
   }
 
@@ -917,16 +927,27 @@ class _PageViewState extends State<_PageView> {
         _selectedText = null;
         _selectionStart = null;
         _selectionEnd = null;
+        _lookupText = null;
+        _lookupStart = null;
+        _lookupEnd = null;
       });
       return;
     }
     final start = sel.start.clamp(0, displayed.length);
     final end = sel.end.clamp(0, displayed.length);
     if (end <= start) return;
+    final candidate = vocabularyCandidateFromSelection(
+      context: displayed,
+      selection: sel,
+      cause: cause,
+    );
     setState(() {
       _selectionStart = start;
       _selectionEnd = end;
       _selectedText = displayed.substring(start, end).trim();
+      _lookupText = candidate?.text;
+      _lookupStart = candidate?.start;
+      _lookupEnd = candidate?.end;
     });
   }
 
@@ -941,24 +962,65 @@ class _PageViewState extends State<_PageView> {
       _selectedText = null;
       _selectionStart = null;
       _selectionEnd = null;
+      _lookupText = null;
+      _lookupStart = null;
+      _lookupEnd = null;
     });
   }
 
   Future<void> _onLookUpPressed() async {
-    final sel = _selectedText?.trim() ?? '';
-    if (sel.isEmpty) return;
+    final lookupText = _lookupText;
+    if (lookupText == null || lookupText.isEmpty) return;
     final started = await widget.onLookUp(
-      selectedText: sel,
+      selectedText: lookupText,
       pageContext: _displayedText,
-      startOffset: _selectionStart,
-      endOffset: _selectionEnd,
+      startOffset: _lookupStart,
+      endOffset: _lookupEnd,
     );
     if (!mounted || !started) return;
     setState(() {
       _selectedText = null;
       _selectionStart = null;
       _selectionEnd = null;
+      _lookupText = null;
+      _lookupStart = null;
+      _lookupEnd = null;
     });
+  }
+
+  Widget _buildSelectedStrip(ReadingAppearance appearance) {
+    return Material(
+      color: Color.alphaBlend(
+        appearance.palette.accent.withValues(alpha: 0.16),
+        appearance.palette.background,
+      ),
+      child: ListTile(
+        dense: true,
+        leading: const Icon(Icons.sticky_note_2, color: Color(0xFFFFA000)),
+        title: Text(
+          _selectedText!,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+        ),
+        trailing: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            OutlinedButton.icon(
+              onPressed: (_lookupText != null && _lookupText!.isNotEmpty)
+                  ? _onLookUpPressed
+                  : null,
+              icon: const Icon(Icons.menu_book_outlined, size: 16),
+              label: const Text('Look up'),
+            ),
+            const SizedBox(width: 8),
+            FilledButton(
+              onPressed: _addSelectedNote,
+              child: const Text('Add Note'),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   @override
@@ -1004,53 +1066,32 @@ class _PageViewState extends State<_PageView> {
             ],
           ),
         ),
-        if (_selectedText != null && _selectedText!.isNotEmpty)
-          Material(
-            color: Color.alphaBlend(
-              appearance.palette.accent.withValues(alpha: 0.16),
-              appearance.palette.background,
-            ),
-            child: ListTile(
-              dense: true,
-              leading: const Icon(
-                Icons.sticky_note_2,
-                color: Color(0xFFFFA000),
-              ),
-              title: Text(
-                _selectedText!,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-              trailing: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  OutlinedButton.icon(
-                    onPressed: isValidVocabularySelection(_selectedText ?? '')
-                        ? _onLookUpPressed
-                        : null,
-                    icon: const Icon(Icons.menu_book_outlined, size: 16),
-                    label: const Text('Look up'),
-                  ),
-                  const SizedBox(width: 8),
-                  FilledButton(
-                    onPressed: _addSelectedNote,
-                    child: const Text('Add Note'),
-                  ),
-                ],
-              ),
-            ),
-          ),
         Expanded(
-          child: Container(
-            color: appearance.palette.background,
-            child: SingleChildScrollView(
-              padding: EdgeInsets.all(appearance.density.paragraphSpacing + 4),
-              child: SelectableText(
-                _displayedText,
-                onSelectionChanged: _handleSelectionChanged,
-                style: appearance.bodyStyle,
+          child: Stack(
+            children: [
+              Positioned.fill(
+                child: Container(
+                  color: appearance.palette.background,
+                  child: SingleChildScrollView(
+                    padding: EdgeInsets.all(
+                      appearance.density.paragraphSpacing + 4,
+                    ),
+                    child: SelectableText(
+                      _displayedText,
+                      onSelectionChanged: _handleSelectionChanged,
+                      style: appearance.bodyStyle,
+                    ),
+                  ),
+                ),
               ),
-            ),
+              if (_selectedText != null && _selectedText!.isNotEmpty)
+                Positioned(
+                  left: 0,
+                  right: 0,
+                  top: 0,
+                  child: _buildSelectedStrip(appearance),
+                ),
+            ],
           ),
         ),
       ],

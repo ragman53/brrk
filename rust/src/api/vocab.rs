@@ -186,32 +186,17 @@ pub(crate) fn extract_sentence(
     start: Option<i32>,
     end: Option<i32>,
 ) -> String {
-    let selection = if let (Some(s), Some(e)) = (start, end) {
-        if s >= 0 && e > s {
-            let start_us = s as usize;
-            let end_us = e as usize;
-            if end_us <= context.len() && start_us <= context.len() {
-                match (
-                    floor_char_boundary(context, start_us),
-                    ceil_char_boundary(context, end_us),
-                ) {
-                    (Some(s_idx), Some(e_idx)) if e_idx > s_idx => Some((s_idx, e_idx)),
-                    _ => None,
-                }
-            } else {
-                None
-            }
-        } else {
-            None
-        }
+    let provided_offsets = start.is_some() || end.is_some();
+    let offset_selection = selection_from_offsets(context, selected, start, end);
+    let selection = if offset_selection.is_some() {
+        offset_selection
+    } else if provided_offsets {
+        find_unique_selection(context, selected)
     } else {
-        None
-    }
-    .or_else(|| {
         context
             .find(selected)
             .map(|idx| (idx, (idx + selected.len()).min(context.len())))
-    });
+    };
 
     let chunk = selection
         .map(|(s_idx, e_idx)| extract_sentence_around_selection(context, s_idx, e_idx))
@@ -225,6 +210,49 @@ pub(crate) fn extract_sentence(
     } else {
         chunk
     }
+}
+
+fn selection_from_offsets(
+    context: &str,
+    selected: &str,
+    start: Option<i32>,
+    end: Option<i32>,
+) -> Option<(usize, usize)> {
+    let (Some(s), Some(e)) = (start, end) else {
+        return None;
+    };
+    if s < 0 || e <= s {
+        return None;
+    }
+    let start_us = s as usize;
+    let end_us = e as usize;
+    if end_us > context.len() || start_us > context.len() {
+        return None;
+    }
+    let (Some(s_idx), Some(e_idx)) = (
+        floor_char_boundary(context, start_us),
+        ceil_char_boundary(context, end_us),
+    ) else {
+        return None;
+    };
+    if e_idx <= s_idx {
+        return None;
+    }
+    let slice = &context[s_idx..e_idx];
+    if slice == selected || slice.trim() == selected {
+        Some((s_idx, e_idx))
+    } else {
+        None
+    }
+}
+
+fn find_unique_selection(context: &str, selected: &str) -> Option<(usize, usize)> {
+    let mut matches = context.match_indices(selected);
+    let (start, _) = matches.next()?;
+    if matches.next().is_some() {
+        return None;
+    }
+    Some((start, start + selected.len()))
 }
 
 fn extract_sentence_around_selection(context: &str, start: usize, end: usize) -> String {
@@ -630,6 +658,29 @@ mod tests {
         let ctx = "Reading philosophy is rewarding.";
         let s = extract_sentence(ctx, "philosophy", None, None);
         assert!(s.contains("philosophy"));
+    }
+
+    #[test]
+    fn sentence_extraction_with_japanese_byte_offsets() {
+        let ctx = "これは最初の文です。対象語を含む二番目の文です。最後の文です。";
+        let start = ctx.find("対象語").unwrap() as i32;
+        let end = start + "対象語".len() as i32;
+        let s = extract_sentence(ctx, "対象語", Some(start), Some(end));
+        assert_eq!(s, "対象語を含む二番目の文です。");
+    }
+
+    #[test]
+    fn sentence_extraction_falls_back_from_bad_unique_japanese_offsets() {
+        let ctx = "これは最初の文です。対象語を含む二番目の文です。最後の文です。";
+        let s = extract_sentence(ctx, "対象語", Some(10), Some(13));
+        assert_eq!(s, "対象語を含む二番目の文です。");
+    }
+
+    #[test]
+    fn sentence_extraction_does_not_guess_when_bad_offsets_are_ambiguous() {
+        let ctx = "対象語は最初の文です。対象語は二番目の文です。";
+        let s = extract_sentence(ctx, "対象語", Some(10), Some(13));
+        assert_eq!(s, "対象語");
     }
 
     #[test]
