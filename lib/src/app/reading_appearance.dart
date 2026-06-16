@@ -2,6 +2,15 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+/// Bundled Noto Serif font used as the default app font for Latin text.
+const brrkSerifFontFamily = 'NotoSerif';
+
+/// Bundled Japanese Mincho-style Noto Serif font used for Japanese glyphs.
+const brrkJapaneseSerifFontFamily = 'NotoSerifJP';
+
+/// Uses Noto Serif for English/Latin text and Noto Serif JP for Japanese text.
+const brrkSerifFontFallback = <String>[brrkJapaneseSerifFontFamily];
+
 /// Density presets for reading content.
 enum ReadingDensity {
   compact(1.25, 8, 0.0),
@@ -183,38 +192,55 @@ class ReadingAppearance {
   double get heading2Size => (fontSize + 5).clamp(12.0, 32.0);
   double get heading3Size => (fontSize + 3).clamp(12.0, 28.0);
 
+  /// Maximum reader frame width. Keeps line length book-like on tablets.
+  static const double readerMaxFrameWidth = 760.0;
+
+  /// Reader padding tuned for e-reader style text blocks.
+  EdgeInsets get readerPadding => EdgeInsets.symmetric(
+    horizontal: (density.paragraphSpacing + 10).clamp(18.0, 30.0).toDouble(),
+    vertical: (density.paragraphSpacing + 8).clamp(14.0, 28.0).toDouble(),
+  );
+
   /// TextStyle for body text.
   TextStyle get bodyStyle => TextStyle(
     fontSize: fontSize,
+    fontWeight: FontWeight.normal,
     height: density.lineHeight,
     letterSpacing: density.letterSpacing,
     color: palette.foreground,
+    fontFamily: brrkSerifFontFamily,
+    fontFamilyFallback: brrkSerifFontFallback,
   );
 
   TextStyle heading1Style([String? fontFamily]) => TextStyle(
     fontSize: heading1Size,
     fontWeight: FontWeight.bold,
     color: palette.foreground,
-    fontFamily: fontFamily,
+    fontFamily: fontFamily ?? brrkSerifFontFamily,
+    fontFamilyFallback: brrkSerifFontFallback,
   );
   TextStyle heading2Style([String? fontFamily]) => TextStyle(
     fontSize: heading2Size,
     fontWeight: FontWeight.bold,
     color: palette.foreground,
-    fontFamily: fontFamily,
+    fontFamily: fontFamily ?? brrkSerifFontFamily,
+    fontFamilyFallback: brrkSerifFontFallback,
   );
   TextStyle heading3Style([String? fontFamily]) => TextStyle(
     fontSize: heading3Size,
     fontWeight: FontWeight.bold,
     color: palette.foreground,
-    fontFamily: fontFamily,
+    fontFamily: fontFamily ?? brrkSerifFontFamily,
+    fontFamilyFallback: brrkSerifFontFallback,
   );
   TextStyle paragraphStyle([String? fontFamily]) => TextStyle(
     fontSize: fontSize,
+    fontWeight: FontWeight.normal,
     height: density.lineHeight,
     letterSpacing: density.letterSpacing,
     color: palette.foreground,
-    fontFamily: fontFamily,
+    fontFamily: fontFamily ?? brrkSerifFontFamily,
+    fontFamilyFallback: brrkSerifFontFallback,
   );
 }
 

@@ -41,6 +41,15 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+  fonts:
+    - family: NotoSerif
+      fonts:
+        - asset: assets/fonts/NotoSerif-Regular.ttf
+          weight: 400
+    - family: NotoSerifJP
+      fonts:
+        - asset: assets/fonts/NotoSerifJP-Regular.ttf
+          weight: 400
 
 flutter_launcher_icons:
   android: true

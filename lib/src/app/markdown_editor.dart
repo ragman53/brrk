@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import 'reading_appearance.dart';
+
 /// Result of [MarkdownEditorScreen] pop.
 ///
 /// - [saved] = `true` and [text] non-null: user saved the edit.
@@ -19,9 +21,9 @@ class MarkdownEditorResult {
   });
 
   const MarkdownEditorResult.cancelled()
-      : saved = false,
-        reset = false,
-        text = null;
+    : saved = false,
+      reset = false,
+      text = null;
 }
 
 /// Plain-Markdown source editor for paper pages and PDF pages.
@@ -114,9 +116,9 @@ class _MarkdownEditorScreenState extends State<MarkdownEditorScreen> {
     if (!mounted) return;
     setState(() => _saving = false);
     if (!ok) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Failed to save edit.')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Failed to save edit.')));
       return;
     }
     Navigator.of(context).pop(
@@ -138,14 +140,14 @@ class _MarkdownEditorScreenState extends State<MarkdownEditorScreen> {
     if (!mounted) return;
     setState(() => _resetting = false);
     if (!ok) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Failed to reset.')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Failed to reset.')));
       return;
     }
-    Navigator.of(context).pop(
-      const MarkdownEditorResult(saved: false, reset: true),
-    );
+    Navigator.of(
+      context,
+    ).pop(const MarkdownEditorResult(saved: false, reset: true));
   }
 
   Future<bool> _confirm({
@@ -237,8 +239,7 @@ class _MarkdownEditorScreenState extends State<MarkdownEditorScreen> {
                           ? const SizedBox(
                               height: 14,
                               width: 14,
-                              child:
-                                  CircularProgressIndicator(strokeWidth: 2),
+                              child: CircularProgressIndicator(strokeWidth: 2),
                             )
                           : const Text('Reset to OCR'),
                     ),
@@ -257,8 +258,9 @@ class _MarkdownEditorScreenState extends State<MarkdownEditorScreen> {
                   maxLengthEnforcement: MaxLengthEnforcement.enforced,
                   textAlignVertical: TextAlignVertical.top,
                   style: const TextStyle(
-                    fontFamily: 'monospace',
-                    fontFamilyFallback: ['Courier', 'monospace'],
+                    fontFamily: brrkSerifFontFamily,
+                    fontFamilyFallback: brrkSerifFontFallback,
+                    fontWeight: FontWeight.normal,
                     fontSize: 14,
                   ),
                   decoration: const InputDecoration(

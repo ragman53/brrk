@@ -191,7 +191,9 @@ void main() {
       expect(find.text('Original OCR text'), findsNothing);
     });
 
-    testWidgets('falls back to original markdown when manual is null', (tester) async {
+    testWidgets('falls back to original markdown when manual is null', (
+      tester,
+    ) async {
       final book = makeBook();
       await tester.pumpWidget(
         wrap(
@@ -219,7 +221,29 @@ void main() {
       expect(find.byIcon(Icons.edit_outlined), findsOneWidget);
     });
 
-    testWidgets('shows edit indicator on chip when page has manual edit', (tester) async {
+    testWidgets('justifies reader body text for book-like layout', (
+      tester,
+    ) async {
+      final book = makeBook();
+      await tester.pumpWidget(
+        wrap(
+          PaperBookDetailScreen(
+            bookId: book.id,
+            getBooks: () async => booksOf(book),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      final readerText = tester.widget<SelectableText>(
+        find.byType(SelectableText),
+      );
+      expect(readerText.textAlign, TextAlign.justify);
+    });
+
+    testWidgets('shows edit indicator on chip when page has manual edit', (
+      tester,
+    ) async {
       final manualPage = PaperPage(
         id: 'page-1',
         imagePath: 'images/book-1/page-1.jpg',

@@ -57,6 +57,8 @@ class _BrrkBootstrapState extends ConsumerState<BrrkBootstrap> {
       theme: ThemeData(
         colorScheme: readingAppearance.palette.materialScheme,
         useMaterial3: true,
+        fontFamily: brrkSerifFontFamily,
+        fontFamilyFallback: brrkSerifFontFallback,
       ),
       home: switch (initState) {
         AppInitializing() => const _LoadingScreen(),

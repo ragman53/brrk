@@ -12,9 +12,12 @@ void main() {
   Widget wrap(Widget child) => ProviderScope(child: MaterialApp(home: child));
 
   group('ReadingAppearanceControls', () {
-    testWidgets('renders font size slider and density/palette buttons',
-        (tester) async {
-      await tester.pumpWidget(wrap(const Scaffold(body: ReadingAppearanceControls())));
+    testWidgets('renders font size slider and density/palette buttons', (
+      tester,
+    ) async {
+      await tester.pumpWidget(
+        wrap(const Scaffold(body: ReadingAppearanceControls())),
+      );
       await tester.pumpAndSettle();
 
       expect(find.text('Font size'), findsOneWidget);
@@ -24,10 +27,33 @@ void main() {
     });
 
     testWidgets('shows current font size value', (tester) async {
-      await tester.pumpWidget(wrap(const Scaffold(body: ReadingAppearanceControls())));
+      await tester.pumpWidget(
+        wrap(const Scaffold(body: ReadingAppearanceControls())),
+      );
       await tester.pumpAndSettle();
 
       expect(find.text('16sp'), findsOneWidget); // default
+    });
+  });
+
+  group('ReadingAppearance text styles', () {
+    test('use Noto Serif as primary and Noto Serif JP as fallback', () {
+      const appearance = ReadingAppearance();
+
+      expect(appearance.bodyStyle.fontFamily, brrkSerifFontFamily);
+      expect(appearance.bodyStyle.fontFamilyFallback, brrkSerifFontFallback);
+      expect(appearance.bodyStyle.fontWeight, FontWeight.normal);
+      expect(appearance.paragraphStyle().fontFamily, brrkSerifFontFamily);
+      expect(
+        appearance.paragraphStyle().fontFamilyFallback,
+        brrkSerifFontFallback,
+      );
+      expect(appearance.paragraphStyle().fontWeight, FontWeight.normal);
+      expect(appearance.heading1Style().fontFamily, brrkSerifFontFamily);
+      expect(
+        appearance.heading1Style().fontFamilyFallback,
+        brrkSerifFontFallback,
+      );
     });
   });
 
