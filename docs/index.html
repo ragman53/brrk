@@ -5,10 +5,24 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Brrk — Android closed test</title>
   <meta name="description" content="Join the Brrk Android closed test. Brrk is an open-source reading assistant that turns paper books and PDFs into Markdown, notes, and vocabulary using your own Mistral API key.">
+  <link rel="alternate" hreflang="en" href="https://ragman53.github.io/brrk/">
+  <link rel="alternate" hreflang="ja" href="https://ragman53.github.io/brrk/ja/">
+  <link rel="alternate" hreflang="x-default" href="https://ragman53.github.io/brrk/">
+  <script>
+    (function () {
+      var params = new URLSearchParams(window.location.search);
+      if (params.get('lang') === 'en') return;
+      var languages = navigator.languages || [navigator.language || navigator.userLanguage || ''];
+      var prefersJapanese = languages.some(function (language) {
+        return String(language).toLowerCase().indexOf('ja') === 0;
+      });
+      if (prefersJapanese) window.location.replace('ja/');
+    }());
+  </script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Archivo+Narrow:wght@500;600;700&family=Public+Sans:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css?v=20260616-landing1">
+  <link rel="stylesheet" href="styles.css?v=20260616-i18n1">
 </head>
 <body>
   <a class="skip-link" href="#main">Skip to content</a>
@@ -24,6 +38,7 @@
         <a href="#testers">Testers</a>
         <a href="privacy.html">Privacy</a>
         <a href="https://github.com/ragman53/brrk">GitHub</a>
+        <a href="ja/" lang="ja" hreflang="ja">日本語</a>
       </nav>
     </header>
 

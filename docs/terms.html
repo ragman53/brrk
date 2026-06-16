@@ -5,10 +5,24 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Brrk Terms of Use</title>
   <meta name="description" content="Terms of Use for Brrk, an Android reading support app for paper books and PDFs.">
+  <link rel="alternate" hreflang="en" href="https://ragman53.github.io/brrk/terms.html">
+  <link rel="alternate" hreflang="ja" href="https://ragman53.github.io/brrk/ja/terms.html">
+  <link rel="alternate" hreflang="x-default" href="https://ragman53.github.io/brrk/terms.html">
+  <script>
+    (function () {
+      var params = new URLSearchParams(window.location.search);
+      if (params.get('lang') === 'en') return;
+      var languages = navigator.languages || [navigator.language || navigator.userLanguage || ''];
+      var prefersJapanese = languages.some(function (language) {
+        return String(language).toLowerCase().indexOf('ja') === 0;
+      });
+      if (prefersJapanese) window.location.replace('ja/terms.html');
+    }());
+  </script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Archivo+Narrow:wght@500;600;700&family=Public+Sans:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css?v=20260604-fonts1">
+  <link rel="stylesheet" href="styles.css?v=20260616-i18n1">
 </head>
 <body>
   <a class="skip-link" href="#main">Skip to content</a>
@@ -19,7 +33,7 @@
         <span>Brrk</span>
       </a>
       <div class="doc-code">Terms of Use // GP-02</div>
-      <div class="brand-right">CHIKOB Development</div>
+      <div class="brand-right language-switch"><a href="ja/terms.html" lang="ja" hreflang="ja">日本語</a></div>
     </header>
 
     <section class="memo-grid" aria-label="Document metadata">
@@ -30,7 +44,7 @@
       <div class="memo-label">Developer</div>
       <div class="memo-value">CHIKOB Development, operated by Junya Kobayashi</div>
       <div class="memo-label">Effective</div>
-      <div class="memo-value">2026-06-03</div>
+      <div class="memo-value">2026-06-16</div>
     </section>
 
     <main id="main">
@@ -98,7 +112,7 @@
     </main>
 
     <footer class="footer-ledger">
-      <div>Terms of Use // Brrk // Effective 2026-06-03</div>
+      <div>Terms of Use // Brrk // Effective 2026-06-16</div>
       <div><a href="index.html">Policy desk</a></div>
     </footer>
   </div>

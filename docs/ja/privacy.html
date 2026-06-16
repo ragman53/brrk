@@ -1,0 +1,161 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Brrk プライバシーポリシー</title>
+  <meta name="description" content="紙の本と PDF のための Android 読書支援アプリ Brrk のプライバシーポリシー。">
+  <link rel="alternate" hreflang="en" href="https://ragman53.github.io/brrk/privacy.html">
+  <link rel="alternate" hreflang="ja" href="https://ragman53.github.io/brrk/ja/privacy.html">
+  <link rel="alternate" hreflang="x-default" href="https://ragman53.github.io/brrk/privacy.html">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Archivo+Narrow:wght@500;600;700&family=Public+Sans:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../styles.css?v=20260616-i18n1">
+</head>
+<body>
+  <a class="skip-link" href="#main">本文へスキップ</a>
+  <div class="page-shell">
+    <header class="top-band" aria-label="Brrk プライバシーポリシーヘッダー">
+      <a class="brand-logo" href="./" aria-label="Brrk 日本語トップへ戻る">
+        <img src="../assets/brrk_icon-96.png" alt="Brrk アプリアイコン" width="40" height="40" decoding="async">
+        <span>Brrk</span>
+      </a>
+      <div class="doc-code">Privacy Policy // GP-01</div>
+      <div class="brand-right language-switch"><a href="../privacy.html?lang=en" hreflang="en">English</a></div>
+    </header>
+
+    <section class="memo-grid" aria-label="文書情報">
+      <div class="memo-label">App</div>
+      <div class="memo-value">Brrk</div>
+      <div class="memo-label">Package</div>
+      <div class="memo-value"><code>com.chikob.brrk</code></div>
+      <div class="memo-label">Developer</div>
+      <div class="memo-value">CHIKOB Development, operated by Junya Kobayashi</div>
+      <div class="memo-label">Contact</div>
+      <div class="memo-value">プライバシーに関する問い合わせ: <a href="mailto:junya.chikob@gmail.com">junya.chikob@gmail.com</a>。機密情報を含まないバグ報告は <a href="https://github.com/ragman53/brrk/issues">GitHub Issues</a> でも受け付けます。</div>
+      <div class="memo-label">Effective</div>
+      <div class="memo-value">2026-06-16</div>
+    </section>
+
+    <main id="main">
+      <section class="hero">
+        <div>
+          <span class="kicker">Required public disclosure</span>
+          <h1>プライバシーポリシー。</h1>
+          <p class="lede">このプライバシーポリシーは、Brrk がユーザーデータにどのようにアクセスし、収集、使用、共有、保護、保持、削除するかを説明します。</p>
+        </div>
+        <div class="stamp" aria-label="プライバシーポリシースタンプ">No Ads<br>No Tracking</div>
+      </section>
+
+      <nav class="nav-ledger" aria-label="ポリシーナビゲーション">
+        <a href="./"><strong>日本語トップ</strong><span>クローズドテスター募集ページへ戻る。</span></a>
+        <a href="terms.html"><strong>利用規約</strong><span>ベータ版の利用条件を読む。</span></a>
+        <a href="https://github.com/ragman53/brrk"><strong>Repository</strong><span>オープンソースのプロジェクトリポジトリ。</span></a>
+      </nav>
+
+      <section class="notice">
+        <strong>短い説明:</strong> Brrk はローカルファーストです。アカウント、広告、アナリティクス、テレメトリーはありません。ネットワーク通信は、ユーザー自身の Mistral API キーを使って OCR または語彙検索を開始したときに発生します。
+      </section>
+
+      <h2>1. Brrk の提供者</h2>
+      <p>Brrk は CHIKOB Development, operated by Junya Kobayashi によって提供されます。</p>
+      <p>プライバシーに関する問い合わせは <a href="mailto:junya.chikob@gmail.com">junya.chikob@gmail.com</a> までご連絡ください。機密情報を含まないバグ報告は <a href="https://github.com/ragman53/brrk/issues">GitHub Issues</a> に投稿できます。公開 Issue には API キー、私的な文書、OCR レスポンス本文、機微な個人情報を含めないでください。</p>
+
+      <h2>2. Brrk がデバイス上に保存するデータ</h2>
+      <p>Brrk は以下のデータを Android のアプリ専用ストレージにローカル保存します。</p>
+      <ul>
+        <li>紙の本のレコード、ページラベル、撮影したページ画像ファイルへの参照。</li>
+        <li>読み込んだ PDF のレコードとローカル PDF ファイルへの参照。</li>
+        <li>紙のページまたは PDF から生成した OCR Markdown。</li>
+        <li>ユーザーが保存した手動 Markdown 編集。</li>
+        <li>メモ、タグ、PDF メモ、語彙定義、語彙の出現例。</li>
+        <li>同じ画像や PDF への重複 OCR リクエストを避けるための OCR キャッシュ。</li>
+        <li>読書表示設定と、一度だけ表示される開示事項への同意記録。</li>
+      </ul>
+      <p>Mistral API キーは Android のセキュアストレージを使ってローカルに保存されます。Brrk はアプリデータを受信または保存するサーバーを運用していません。</p>
+
+      <h2>3. Brrk がデバイス外へ送信するデータ</h2>
+      <p>Brrk は、ユーザーが開始した機能のためにのみデータをデバイス外へ送信します。</p>
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>機能</th>
+            <th>送信されるデータ</th>
+            <th>送信先</th>
+            <th>目的</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>紙の本 OCR</td>
+            <td>撮影または切り抜いたページ画像と、認証ヘッダー内の Mistral API キー。</td>
+            <td>Mistral OCR API</td>
+            <td>選択した画像を Markdown テキストに変換するため。</td>
+          </tr>
+          <tr>
+            <td>PDF OCR</td>
+            <td>選択した PDF ファイルと、認証ヘッダー内の Mistral API キー。</td>
+            <td>Mistral OCR API</td>
+            <td>選択した PDF を Markdown テキストに変換するため。</td>
+          </tr>
+          <tr>
+            <td>語彙検索</td>
+            <td>選択した単語または短い語句、その語句を含む一文、ソースメタデータ、認証ヘッダー内の Mistral API キー。</td>
+            <td>Mistral Chat Completions API</td>
+            <td>短い定義と正規化された語彙エントリを生成するため。</td>
+          </tr>
+        </tbody>
+      </table>
+      <p>語彙検索では、Brrk は選択した単語または語句と、それを含む一文のみを送信します。語彙検索のためにページ全体や文書全体を送信することはありません。</p>
+
+      <h2 id="closed-tester-signup">4. クローズドテスター申込</h2>
+      <p>外部フォームを使って Brrk のクローズドテストに申し込む場合、開発者は Google Play クローズドテストへの招待とテスト連絡の目的で、メールアドレスおよび任意の連絡情報を収集することがあります。このテスター申込情報は Brrk アプリ自体によって収集されるものではありません。申込フォームには API キー、私的な文書、機微な個人情報を入力しないでください。</p>
+
+      <h2>5. 第三者サービスと共有</h2>
+      <p>Brrk は、ユーザーがこれらの機能を開始したときに、OCR と語彙検索のために Mistral AI を第三者サービスプロバイダーとして使用します。Mistral の API に送信されたデータの取り扱いは、Mistral の規約およびプライバシー慣行に従います。</p>
+      <p>Brrk は個人データまたは機微なユーザーデータを販売しません。広告、アナリティクス、トラッキング、マーケティングのためにユーザーデータを共有することもありません。</p>
+
+      <h2>6. 権限</h2>
+      <ul>
+        <li><strong>カメラ:</strong> ユーザーが撮影を開始したときに、物理的な本のページを撮影するためにのみ使用します。</li>
+        <li><strong>インターネット:</strong> Mistral OCR と語彙検索リクエストのために使用します。</li>
+      </ul>
+      <p>PDF の読み込みには Android のシステムファイルピッカーを使用します。Brrk は PDF 読み込みのために広範なストレージアクセス権限を要求しません。</p>
+
+      <h2>7. セキュリティ</h2>
+      <ul>
+        <li>Mistral へのネットワークリクエストには HTTPS を使用します。</li>
+        <li>Mistral API キーは Android のセキュアストレージを通じて保存されます。</li>
+        <li>アプリデータはアプリ専用ストレージに保存されます。</li>
+        <li>Brrk では Android のフルデータバックアップを無効にしています。</li>
+      </ul>
+      <p>ユーザーのリクエストにより第三者サービスへデータが送信される場合を含め、どのアプリも絶対的な安全性を保証することはできません。デバイス、OS、API 認証情報を安全に管理してください。</p>
+
+      <h2>8. 保持と削除</h2>
+      <p>ローカルアプリデータは、ユーザーがアプリ内で削除する、Android のアプリデータを消去する、または Brrk をアンインストールするまでデバイス上に残ります。</p>
+      <ul>
+        <li>アプリ内で読み込んだ PDF と紙の本を削除できます。</li>
+        <li>メモ、語彙エントリ、語彙の出現例をアプリ内で削除できます。</li>
+        <li>設定から OCR キャッシュデータを削除できます。</li>
+        <li>Brrk をアンインストールすると、アプリ専用ストレージ内のローカルデータはデバイスから削除されます。</li>
+      </ul>
+      <p>Brrk にはアカウントシステムがないため、削除すべき Brrk アカウントはありません。Mistral に送信されたデータについては、Mistral のポリシーとアカウント管理を確認してください。</p>
+
+      <h2>9. 子ども</h2>
+      <p>Brrk は子どもを対象としていません。必要な権利と同意がない限り、子どもの個人データを処理するために Brrk を使用しないでください。</p>
+
+      <h2>10. 本ポリシーの変更</h2>
+      <p>Brrk の変更に伴い、本ポリシーは更新されることがあります。このページ上部の有効日は最新の改定日を示します。</p>
+
+      <h2>11. 連絡先</h2>
+      <p>プライバシーに関する問い合わせ: <a href="mailto:junya.chikob@gmail.com">junya.chikob@gmail.com</a>。機密情報を含まないバグ報告は <a href="https://github.com/ragman53/brrk/issues">https://github.com/ragman53/brrk/issues</a> に投稿できます。公開 Issue には私的な文書、API キー、機微な個人情報を含めないでください。</p>
+    </main>
+
+    <footer class="footer-ledger">
+      <div>Privacy Policy // Brrk // Effective 2026-06-16</div>
+      <div><a href="./">日本語トップ</a> · <a href="../privacy.html?lang=en" hreflang="en">English</a></div>
+    </footer>
+  </div>
+</body>
+</html>
