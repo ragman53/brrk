@@ -3,82 +3,178 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Brrk — Policy Desk</title>
-  <meta name="description" content="Brrk policy pages for Google Play: privacy policy, terms of use, and app data handling notes.">
+  <title>Brrk — Android closed test</title>
+  <meta name="description" content="Join the Brrk Android closed test. Brrk is an open-source reading assistant that turns paper books and PDFs into Markdown, notes, and vocabulary using your own Mistral API key.">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Archivo+Narrow:wght@500;600;700&family=Public+Sans:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css?v=20260604-fonts1">
+  <link rel="stylesheet" href="styles.css?v=20260616-landing1">
 </head>
 <body>
   <a class="skip-link" href="#main">Skip to content</a>
-  <div class="page-shell">
-    <header class="top-band" aria-label="Brrk policy header">
-      <a class="brand-logo" href="index.html" aria-label="Brrk policy desk home">
+  <div class="page-shell landing-shell">
+    <header class="top-band site-header" aria-label="Brrk site header">
+      <a class="brand-logo" href="index.html" aria-label="Brrk home">
         <img src="assets/brrk_icon-96.png" alt="Brrk app icon" width="40" height="40" decoding="async">
         <span>Brrk</span>
       </a>
-      <div class="doc-code">Public File // GP-00</div>
-      <div class="brand-right">CHIKOB Development</div>
+      <div class="doc-code">Closed Test // GP-00</div>
+      <nav class="site-nav" aria-label="Main navigation">
+        <a href="#what-it-does">What it does</a>
+        <a href="#testers">Testers</a>
+        <a href="privacy.html">Privacy</a>
+        <a href="https://github.com/ragman53/brrk">GitHub</a>
+      </nav>
     </header>
 
-    <section class="memo-grid" aria-label="Document metadata">
-      <div class="memo-label">Office</div>
-      <div class="memo-value">Brrk policy desk / CHIKOB Development, operated by Junya Kobayashi</div>
+    <section class="memo-grid" aria-label="Project metadata">
+      <div class="memo-label">Project</div>
+      <div class="memo-value">Open-source Android reading assistant for paper books and PDFs</div>
+      <div class="memo-label">Status</div>
+      <div class="memo-value">Recruiting Google Play closed testers</div>
       <div class="memo-label">Package</div>
       <div class="memo-value"><code>com.chikob.brrk</code></div>
-      <div class="memo-label">Version</div>
-      <div class="memo-value">0.1.0-beta.2</div>
-      <div class="memo-label">Updated</div>
-      <div class="memo-value">2026-06-03</div>
+      <div class="memo-label">Developer</div>
+      <div class="memo-value">CHIKOB Development, operated by Junya Kobayashi</div>
     </section>
 
     <main id="main">
-      <section class="hero">
+      <section class="hero landing-hero" aria-labelledby="hero-title">
         <div>
-          <span class="kicker">Android reading support // local-first</span>
-          <h1>Policy papers for Brrk.</h1>
-          <p class="lede">Brrk turns paper books and PDFs into readable Markdown, notes, and vocabulary on Android. These public pages explain how the app handles data and the terms for using the beta.</p>
+          <span class="kicker">Android closed test // open source // BYOK AI</span>
+          <h1 id="hero-title">Turn books and PDFs into readable Markdown.</h1>
+          <p class="lede">Brrk is an open-source Android reading assistant for paper books and PDFs. Capture pages, import PDFs, run OCR with your own Mistral API key, and keep the results as Markdown, notes, and vocabulary.</p>
+          <div class="cta-row" aria-label="Primary actions">
+            <a class="button button-primary" href="GOOGLE_FORM_URL_HERE">Join the closed test</a>
+            <a class="button button-secondary" href="https://github.com/ragman53/brrk">View source on GitHub</a>
+          </div>
+          <ul class="trust-ledger" aria-label="Project notes">
+            <li>Open source</li>
+            <li>No ads / no analytics / no telemetry</li>
+            <li>Bring your own Mistral API key</li>
+            <li>Android closed test</li>
+          </ul>
         </div>
-        <div class="stamp" aria-label="Open beta stamp">Open<br>Beta</div>
+        <aside class="tester-ticket" aria-label="Closed test ticket">
+          <span class="ticket-label">Tester file</span>
+          <strong>14 days</strong>
+          <p>Join the Google Play closed test, install Brrk, and stay opted in while the release requirement runs.</p>
+          <a href="GOOGLE_FORM_URL_HERE">Sign up</a>
+        </aside>
       </section>
 
-      <nav class="nav-ledger" aria-label="Policy documents">
-        <a href="privacy.html">
-          <strong>Privacy Policy</strong>
-          <span>Data access, Mistral OCR/Chat use, retention, deletion, and contact.</span>
-        </a>
-        <a href="terms.html">
-          <strong>Terms of Use</strong>
-          <span>Beta terms, user responsibilities, third-party services, and warranty limits.</span>
-        </a>
-        <a href="https://github.com/ragman53/brrk/">
-          <strong>GitHub</strong>
-          <span>Source code, issues, and developer beta builds.</span>
-        </a>
-      </nav>
-
-      <div class="paper-card-grid">
-        <article class="paper-card">
+      <section id="what-it-does" class="problem-section" aria-labelledby="problem-title">
+        <div>
           <span class="section-number">Record 01</span>
-          <h2>Local by default</h2>
-          <p>Imported PDFs, captured images, OCR Markdown, manual edits, notes, tags, vocabulary, and cache data are stored in app-private storage on the device.</p>
-        </article>
-        <article class="paper-card">
-          <span class="section-number">Record 02</span>
-          <h2>User-started network use</h2>
-          <p>Brrk sends data to Mistral only when you start OCR or vocabulary lookup. The app does not include ads, analytics, accounts, or telemetry.</p>
-        </article>
-      </div>
+          <h2 id="problem-title">Reading material should be easier to work with.</h2>
+        </div>
+        <div class="problem-copy">
+          <p>Paper books are still excellent to read, but awkward to quote, search, and annotate. PDFs are portable, but often uncomfortable on a phone and hard to extract from cleanly.</p>
+          <p>Brrk helps you convert selected reading material into Markdown, local notes, tags, and vocabulary entries. It is designed for students, researchers, language learners, open-source users, and people curious about practical OCR workflows.</p>
+        </div>
+      </section>
 
-      <section class="notice" aria-label="Important notice">
-        <strong>Google Play note:</strong> Use the <a href="privacy.html">Privacy Policy</a> URL in Play Console. The policy is an active public HTML page, not a PDF, and includes developer information plus a contact mechanism for privacy inquiries.
+      <section class="feature-section" aria-labelledby="features-title">
+        <span class="section-number">Record 02</span>
+        <h2 id="features-title">What Brrk does</h2>
+        <div class="feature-grid">
+          <article class="paper-card feature-card">
+            <h3>Paper book OCR</h3>
+            <p>Capture a physical page, crop it, and turn the selected image into Markdown with Mistral OCR.</p>
+          </article>
+          <article class="paper-card feature-card">
+            <h3>PDF OCR</h3>
+            <p>Import a local PDF and create readable Markdown pages for mobile reading and review.</p>
+          </article>
+          <article class="paper-card feature-card">
+            <h3>Markdown reading</h3>
+            <p>Read OCR output as reflowable Markdown with manual edits when OCR needs correction.</p>
+          </article>
+          <article class="paper-card feature-card">
+            <h3>Local notes and tags</h3>
+            <p>Select text, save notes, attach tags, and keep reading records in app-private storage.</p>
+          </article>
+          <article class="paper-card feature-card">
+            <h3>Vocabulary lookup</h3>
+            <p>Look up selected English words or short Japanese terms with sentence context through Mistral Chat.</p>
+          </article>
+          <article class="paper-card feature-card">
+            <h3>Open-source / BYOK design</h3>
+            <p>No Brrk account or developer-owned AI backend. The source is public and AI features use your own API key.</p>
+          </article>
+        </div>
+      </section>
+
+      <section id="testers" class="tester-section" aria-labelledby="tester-title">
+        <div class="tester-main">
+          <span class="section-number">Record 03</span>
+          <h2 id="tester-title">Help Brrk reach Google Play.</h2>
+          <p class="lede">Google Play requires a closed test before production release. I’m looking for Android testers who can join the closed test and keep it active for 14 days.</p>
+          <p>You can help even if you only join the test, install the app, check the UI, and stay opted in. Feedback is appreciated, but not required.</p>
+          <div class="cta-row">
+            <a class="button button-primary" href="GOOGLE_FORM_URL_HERE">Sign up as a closed tester</a>
+            <a class="button button-secondary" href="privacy.html#closed-tester-signup">How tester signup data is used</a>
+          </div>
+          <p class="fine-print">Your email will only be used to invite you to the Brrk Google Play closed test and communicate about testing.</p>
+        </div>
+        <aside class="requirements-card" aria-labelledby="requirements-title">
+          <h3 id="requirements-title">Tester requirements</h3>
+          <ul>
+            <li>Android phone</li>
+            <li>Google account email for Play Store testing</li>
+            <li>Willing to stay opted in for 14 days</li>
+            <li>Mistral API key is optional for testers</li>
+            <li>OCR and vocabulary features require your own Mistral API key</li>
+            <li>Feedback is appreciated but not required</li>
+          </ul>
+        </aside>
+      </section>
+
+      <section id="privacy" class="privacy-section" aria-labelledby="privacy-title">
+        <div>
+          <span class="section-number">Record 04</span>
+          <h2 id="privacy-title">Local-first, with explicit AI requests.</h2>
+          <p>Brrk does not operate a developer-owned OCR or AI backend. It has no Brrk account system, no ads, no analytics, and no telemetry.</p>
+        </div>
+        <div class="privacy-ledger">
+          <ul>
+            <li>OCR and vocabulary lookup use the user’s own Mistral API key.</li>
+            <li>When OCR is used, selected images or PDFs are sent to Mistral API.</li>
+            <li>When vocabulary lookup is used, the selected word or term and its sentence context may be sent to Mistral API.</li>
+            <li>The Mistral API key is stored locally using Android secure storage.</li>
+            <li>Brrk does not send your documents or API key to the Brrk developer.</li>
+          </ul>
+          <a class="text-link" href="privacy.html">Read the Privacy Policy</a>
+        </div>
+      </section>
+
+      <section class="oss-section" aria-labelledby="oss-title">
+        <div class="oss-copy">
+          <span class="section-number">Record 05</span>
+          <h2 id="oss-title">Open source matters for a reading app.</h2>
+          <p>Reading apps handle personal material. Brrk’s source code is inspectable so users can review the data-flow model, check how Mistral requests are made, and file issues or suggestions in public.</p>
+        </div>
+        <a class="github-card" href="https://github.com/ragman53/brrk" aria-label="Open Brrk source code on GitHub">
+          <span>Repository</span>
+          <strong>github.com/ragman53/brrk</strong>
+          <em>Source code, issues, releases, and beta notes</em>
+        </a>
+      </section>
+
+      <section class="notice final-cta" aria-label="Closed test call to action">
+        <strong>Ready to help?</strong>
+        <span>Join the closed test, install Brrk from Google Play when invited, and stay opted in for 14 days.</span>
+        <a class="button button-primary" href="GOOGLE_FORM_URL_HERE">Join the closed test</a>
       </section>
     </main>
 
     <footer class="footer-ledger">
-      <div>Brrk // Policy desk // Public web pages</div>
-      <div><a href="https://github.com/ragman53/brrk">Source repository</a></div>
+      <div>
+        <a href="privacy.html">Privacy Policy</a> ·
+        <a href="terms.html">Terms of Use</a> ·
+        <a href="https://github.com/ragman53/brrk">GitHub</a>
+      </div>
+      <div>Developer: CHIKOB Development, operated by Junya Kobayashi · Package: <code>com.chikob.brrk</code></div>
     </footer>
   </div>
 </body>
