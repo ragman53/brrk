@@ -103,9 +103,7 @@ void main() {
       expect(find.textContaining('Original OCR paragraph.'), findsOneWidget);
     });
 
-    testWidgets('justifies Markdown body text for book-like layout', (
-      tester,
-    ) async {
+    testWidgets('uses natural Markdown body text alignment', (tester) async {
       const ocrMarkdown = '<!-- page: 1 -->\n# Page\n\nSome body text.';
       await tester.pumpWidget(
         ProviderScope(
@@ -122,9 +120,7 @@ void main() {
       await tester.pumpAndSettle();
 
       final markdown = tester.widget<Markdown>(find.byType(Markdown));
-      expect(markdown.styleSheet?.textAlign, WrapAlignment.spaceBetween);
-      expect(markdown.styleSheet?.h1Align, WrapAlignment.start);
-      expect(markdown.styleSheet?.unorderedListAlign, WrapAlignment.start);
+      expect(markdown.styleSheet?.textAlign, isNot(WrapAlignment.spaceBetween));
     });
 
     testWidgets(

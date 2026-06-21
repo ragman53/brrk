@@ -221,9 +221,7 @@ void main() {
       expect(find.byIcon(Icons.edit_outlined), findsOneWidget);
     });
 
-    testWidgets('justifies reader body text for book-like layout', (
-      tester,
-    ) async {
+    testWidgets('uses natural reader body text alignment', (tester) async {
       final book = makeBook();
       await tester.pumpWidget(
         wrap(
@@ -238,7 +236,7 @@ void main() {
       final readerText = tester.widget<SelectableText>(
         find.byType(SelectableText),
       );
-      expect(readerText.textAlign, TextAlign.justify);
+      expect(readerText.textAlign, isNull);
     });
 
     testWidgets('shows edit indicator on chip when page has manual edit', (

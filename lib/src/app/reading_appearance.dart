@@ -192,15 +192,6 @@ class ReadingAppearance {
   double get heading2Size => (fontSize + 5).clamp(12.0, 32.0);
   double get heading3Size => (fontSize + 3).clamp(12.0, 28.0);
 
-  /// Maximum reader frame width. Keeps line length book-like on tablets.
-  static const double readerMaxFrameWidth = 760.0;
-
-  /// Reader padding tuned for e-reader style text blocks.
-  EdgeInsets get readerPadding => EdgeInsets.symmetric(
-    horizontal: (density.paragraphSpacing + 10).clamp(18.0, 30.0).toDouble(),
-    vertical: (density.paragraphSpacing + 8).clamp(14.0, 28.0).toDouble(),
-  );
-
   /// TextStyle for body text.
   TextStyle get bodyStyle => TextStyle(
     fontSize: fontSize,

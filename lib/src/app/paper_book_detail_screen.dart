@@ -1072,28 +1072,15 @@ class _PageViewState extends State<_PageView> {
               Positioned.fill(
                 child: Container(
                   color: appearance.palette.background,
-                  child: LayoutBuilder(
-                    builder: (context, constraints) {
-                      final frameWidth = constraints.maxWidth
-                          .clamp(0.0, ReadingAppearance.readerMaxFrameWidth)
-                          .toDouble();
-                      return Align(
-                        alignment: Alignment.topCenter,
-                        child: SizedBox(
-                          width: frameWidth,
-                          height: constraints.maxHeight,
-                          child: SingleChildScrollView(
-                            padding: appearance.readerPadding,
-                            child: SelectableText(
-                              _displayedText,
-                              onSelectionChanged: _handleSelectionChanged,
-                              textAlign: TextAlign.justify,
-                              style: appearance.bodyStyle,
-                            ),
-                          ),
-                        ),
-                      );
-                    },
+                  child: SingleChildScrollView(
+                    padding: EdgeInsets.all(
+                      appearance.density.paragraphSpacing + 4,
+                    ),
+                    child: SelectableText(
+                      _displayedText,
+                      onSelectionChanged: _handleSelectionChanged,
+                      style: appearance.bodyStyle,
+                    ),
                   ),
                 ),
               ),
