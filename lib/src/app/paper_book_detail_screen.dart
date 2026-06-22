@@ -17,6 +17,7 @@ import 'package:brrk/src/app/note_editor.dart';
 import 'package:brrk/src/app/markdown_editor.dart';
 import 'package:brrk/src/app/ocr_disclosure.dart';
 import 'package:brrk/src/app/reading_appearance.dart';
+import 'package:brrk/src/app/reader/reader_surface.dart';
 import 'package:brrk/src/app/settings_screen.dart';
 import 'package:brrk/src/rust/api/storage.dart' as storage;
 import 'package:brrk/src/rust/api/models.dart';
@@ -1073,13 +1074,16 @@ class _PageViewState extends State<_PageView> {
                 child: Container(
                   color: appearance.palette.background,
                   child: SingleChildScrollView(
-                    padding: EdgeInsets.all(
-                      appearance.density.paragraphSpacing + 4,
+                    padding: EdgeInsets.symmetric(
+                      vertical: appearance.density.paragraphSpacing + 4,
                     ),
-                    child: SelectableText(
-                      _displayedText,
-                      onSelectionChanged: _handleSelectionChanged,
-                      style: appearance.bodyStyle,
+                    child: ReaderSurface(
+                      child: SelectableText(
+                        _displayedText,
+                        onSelectionChanged: _handleSelectionChanged,
+                        textAlign: appearance.bodyTextAlign,
+                        style: appearance.bodyStyle,
+                      ),
                     ),
                   ),
                 ),

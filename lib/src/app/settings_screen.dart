@@ -1,6 +1,8 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:brrk/src/app/api_key.dart';
+import 'package:brrk/src/app/reader/hyphenation/selection_gate_screen.dart';
 import 'package:brrk/src/app/reading_appearance.dart';
 import 'package:brrk/src/rust/api/storage.dart' as storage;
 import 'package:url_launcher/url_launcher.dart';
@@ -411,6 +413,29 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             ),
           ),
 
+          if (kDebugMode) ...[
+            const SizedBox(height: 48),
+            const Divider(),
+            const SizedBox(height: 24),
+            Text('Debug', style: Theme.of(context).textTheme.titleMedium),
+            const SizedBox(height: 8),
+            const Text(
+              'Debug-only tools. Not available in release builds.',
+              style: TextStyle(color: Colors.grey),
+            ),
+            const SizedBox(height: 12),
+            OutlinedButton.icon(
+              onPressed: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute<void>(
+                    builder: (_) => const SelectionGateScreen(),
+                  ),
+                );
+              },
+              icon: const Icon(Icons.science_outlined),
+              label: const Text('Soft-hyphen selection gate'),
+            ),
+          ],
           const SizedBox(height: 48),
           const Divider(),
           const SizedBox(height: 24),

@@ -1,0 +1,296 @@
+// SPDX-License-Identifier: MIT
+//
+// FEAT-SPEC §10.1 / §10.5 / §10.6 / §10.7: decorative line-end hyphen.
+//
+// This painter draws a single `U+2010 HYPHEN` at every `U+00AD SOFT
+// HYPHEN` position where the duplicate `TextPainter` proves that
+// Flutter actually broke the line. It must not:
+//   - choose its own line breaks (the duplicate painter inherits them
+//     from the same spec),
+//   - affect selection, copy, or semantics (it is wrapped in
+//     `IgnorePointer` + `ExcludeSemantics` by `AcademicSelectableText`),
+//   - insert real `-` characters into selectable text,
+//   - paint when neither the preceding glyph box nor caret fallback
+//     yields a stable trailing position (FEAT-SPEC §10.6).
+//
+// Per FEAT-SPEC §20: prefer omission of one uncertain decorative
+// hyphen over painting a misplaced glyph.
+//
+// Width parity (FEAT-SPEC §10.3 + review blocker):
+// `SelectableText` renders through `EditableText` → `RenderEditable`.
+// `RenderEditable` subtracts a caret margin
+// (`_kCaretGap + cursorWidth`) from its constraints before laying
+// out its internal `TextPainter` (see
+// `flutter/packages/flutter/lib/src/rendering/editable.dart`:
+// `_caretMargin` ≈ `_kCaretGap + cursorWidth`,
+// `availableMaxWidth = math.max(0.0, maxWidth - _caretMargin)`).
+// `SelectableText` uses the default `cursorWidth: 2.0` for
+// `Material`, so the effective content width on Android is
+// `constraints.maxWidth - 3.0`. The probe painter subtracts the same
+// amount so its line breaks mirror the actual selectable surface.
+
+import 'dart:math' as math;
+
+import 'package:flutter/painting.dart';
+import 'package:flutter/rendering.dart' show CustomPainter;
+
+import 'reader_text_layout_spec.dart';
+
+/// Caret gap mirrored from `RenderEditable._kCaretGap` (private to
+/// `package:flutter/src/rendering/editable.dart`). Keep in sync if
+/// Flutter changes the default.
+const double _kCaretGap = 1.0;
+
+/// Default `cursorWidth` for `Material`-hosted `SelectableText`.
+/// We mirror it and pass the same value explicitly from
+/// `AcademicSelectableText` to avoid probe/selectable drift.
+const double _kDefaultCursorWidth = 2.0;
+
+/// Total caret margin subtracted from the container width before
+/// laying out the duplicate `TextPainter`. Mirrors
+/// `RenderEditable._caretMargin = _kCaretGap + cursorWidth`.
+double visibleHyphenCaretMargin({double cursorWidth = _kDefaultCursorWidth}) {
+  return _kCaretGap + cursorWidth;
+}
+
+/// Effective content width available to the duplicate `TextPainter`.
+///
+/// Subtracts the mirrored `RenderEditable._caretMargin` from the raw
+/// container width so the probe shares the same break opportunities
+/// as the selectable surface.
+double visibleHyphenEffectiveWidth({
+  required double containerWidth,
+  double cursorWidth = _kDefaultCursorWidth,
+}) {
+  if (!containerWidth.isFinite) return containerWidth;
+  final margin = visibleHyphenCaretMargin(cursorWidth: cursorWidth);
+  return math.max(0.0, containerWidth - margin);
+}
+
+/// A confirmed decorative hyphen placement computed from the probe
+/// `TextPainter`.
+///
+/// Exposed for testability. The painter derives a list of these
+/// placements and renders `U+2010` for each one.
+class HyphenPlacement {
+  const HyphenPlacement({
+    required this.shyOffset,
+    required this.x,
+    required this.y,
+  });
+
+  /// Display-text offset of the `U+00AD` that produced this
+  /// placement.
+  final int shyOffset;
+
+  /// Painted x coordinate of the decorative hyphen glyph. The
+  /// painter clamps this inside the content bounds.
+  final double x;
+
+  /// Painted top-left y coordinate of the decorative hyphen glyph.
+  ///
+  /// `TextPainter.getOffsetForCaret` returns the caret paint offset,
+  /// not a text baseline. Painting at `y - glyphHeight` can move the
+  /// first-line hyphen above the clip bounds, making it invisible.
+  final double y;
+
+  @override
+  String toString() => 'HyphenPlacement(shyOffset: $shyOffset, x: $x, y: $y)';
+}
+
+/// Paints a single decorative `U+2010 HYPHEN` at every confirmed
+/// `U+00AD` line break in [spec.displayText].
+class VisibleHyphenPainter extends CustomPainter {
+  const VisibleHyphenPainter({
+    required this.spec,
+    required this.maxWidth,
+    this.cursorWidth = _kDefaultCursorWidth,
+  });
+
+  final ReaderTextLayoutSpec spec;
+
+  /// Container width as reported by `LayoutBuilder`. The probe
+  /// painter will subtract the caret margin from this value before
+  /// laying out.
+  final double maxWidth;
+
+  /// Mirrored `SelectableText` / `RenderEditable` `cursorWidth`.
+  final double cursorWidth;
+
+  /// The character painted as the decorative line-end hyphen.
+  static const String decorativeHyphen = '\u2010';
+
+  /// Builds the duplicate `TextPainter` used to detect breaks and to
+  /// position glyphs. The probe uses the same effective width as
+  /// `SelectableText`/`RenderEditable` (FEAT-SPEC §10.3).
+  ///
+  /// Public for testability. Callers must use exactly the same
+  /// `TextStyle` and `textAlign` as the primary `SelectableText`.
+  TextPainter buildProbePainter({double? width}) {
+    final painter = TextPainter(
+      text: TextSpan(text: spec.displayText, style: spec.resolvedTextStyle),
+      textAlign: spec.textAlign,
+      textDirection: spec.textDirection,
+      textScaler: spec.resolvedTextScaler,
+      locale: spec.locale,
+      strutStyle: spec.strutStyle,
+      textWidthBasis: spec.textWidthBasis,
+      textHeightBehavior: spec.textHeightBehavior,
+      maxLines: spec.maxLines,
+      ellipsis: spec.ellipsis,
+    );
+    final containerWidth = width ?? maxWidth;
+    final effective = visibleHyphenEffectiveWidth(
+      containerWidth: containerWidth,
+      cursorWidth: cursorWidth,
+    );
+    if (effective.isFinite && effective > 0) {
+      painter.layout(maxWidth: effective);
+    } else {
+      painter.layout();
+    }
+    return painter;
+  }
+
+  /// Returns the display-text offsets of every `U+00AD` that is
+  /// followed and preceded by at least one visible code unit.
+  ///
+  /// Markers at offset 0 or `displayText.length` are ignored.
+  List<int> _softHyphenOffsets() {
+    final result = <int>[];
+    final text = spec.displayText;
+    for (var i = 0; i < text.length; i++) {
+      if (text[i] != '\u00AD') continue;
+      if (i == 0 || i == text.length - 1) continue;
+      if (i - 1 < 0 || i + 1 >= text.length) continue;
+      // Both surrounding units must be non-soft-hyphen to be a real
+      // break opportunity inside a word.
+      if (text[i - 1] == '\u00AD' || text[i + 1] == '\u00AD') continue;
+      result.add(i);
+    }
+    return result;
+  }
+
+  /// Confirms that Flutter actually broke at [shyOffset] in [probe].
+  /// Markers whose before/after visible neighbours fall on the same
+  /// visual line are skipped.
+  bool _isConfirmedBreak(TextPainter probe, int shyOffset) {
+    final before = probe.getLineBoundary(TextPosition(offset: shyOffset - 1));
+    final after = probe.getLineBoundary(TextPosition(offset: shyOffset + 1));
+    return before.start != after.start || before.end != after.end;
+  }
+
+  /// Returns the trailing edge of the last visible glyph before the
+  /// marker. This is the preferred anchor because caret positions can
+  /// resolve to the next visual line at a soft-hyphen break.
+  Offset? _trailingGlyphBox(TextPainter probe, int shyOffset) {
+    final boxes = probe.getBoxesForSelection(
+      TextSelection(baseOffset: shyOffset - 1, extentOffset: shyOffset),
+    );
+    if (boxes.isEmpty) return null;
+    final TextBox box = boxes.last;
+    if (box.right <= box.left || box.bottom <= box.top) return null;
+    if (!box.right.isFinite || !box.top.isFinite) return null;
+    return Offset(box.right, box.top);
+  }
+
+  /// Fallback (FEAT-SPEC §10.6): upstream caret position at the
+  /// marker. Returns `null` if it is not finite.
+  Offset? _upstreamCaret(TextPainter probe, int shyOffset) {
+    final caret = probe.getOffsetForCaret(
+      TextPosition(offset: shyOffset, affinity: TextAffinity.upstream),
+      Rect.zero,
+    );
+    if (!caret.dx.isFinite || !caret.dy.isFinite) return null;
+    return caret;
+  }
+
+  /// Computes the (x, y) top-left offset at which to paint a
+  /// decorative hyphen for [shyOffset], or `null` if no stable
+  /// position exists.
+  Offset? _positionForMarker(TextPainter probe, int shyOffset) {
+    return _trailingGlyphBox(probe, shyOffset) ??
+        _upstreamCaret(probe, shyOffset);
+  }
+
+  /// Builds a `TextPainter` for the single decorative hyphen glyph at
+  /// the resolved style.
+  TextPainter _buildHyphenPainter() {
+    return TextPainter(
+      text: TextSpan(text: decorativeHyphen, style: spec.resolvedTextStyle),
+      textDirection: spec.textDirection,
+      textScaler: spec.resolvedTextScaler,
+      locale: spec.locale,
+      textHeightBehavior: spec.textHeightBehavior,
+    )..layout();
+  }
+
+  /// Measures the width of `U+2010 HYPHEN` at the resolved style using
+  /// the same spec, so both surfaces share one font source.
+  double _measureHyphenWidth() {
+    final tp = TextPainter(
+      text: TextSpan(text: decorativeHyphen, style: spec.resolvedTextStyle),
+      textDirection: spec.textDirection,
+      textScaler: spec.resolvedTextScaler,
+      locale: spec.locale,
+      textHeightBehavior: spec.textHeightBehavior,
+    )..layout();
+    return tp.width;
+  }
+
+  /// Computes the list of decorative hyphen placements for the probe
+  /// layout. Public for testability (FEAT-SPEC §15.4).
+  ///
+  /// Returns at most one [HyphenPlacement] per confirmed `U+00AD`
+  /// break. The x coordinate is clamped inside the effective content
+  /// bounds so the painted glyph never escapes the row.
+  List<HyphenPlacement> computePlacements({double? containerWidth}) {
+    if (spec.displayText.isEmpty) return const [];
+    final container = containerWidth ?? maxWidth;
+    if (!container.isFinite || container <= 0) return const [];
+    if (spec.textAlign != TextAlign.justify) {
+      // Decorative hyphens only matter when justified; otherwise the
+      // user already opted out of academic layout.
+      return const [];
+    }
+
+    final probe = buildProbePainter(width: container);
+    final hyphenStyleWidth = _measureHyphenWidth();
+    if (hyphenStyleWidth <= 0) return const [];
+
+    final effective = visibleHyphenEffectiveWidth(
+      containerWidth: container,
+      cursorWidth: cursorWidth,
+    );
+    final placements = <HyphenPlacement>[];
+    for (final shy in _softHyphenOffsets()) {
+      if (!_isConfirmedBreak(probe, shy)) continue;
+      final pos = _positionForMarker(probe, shy);
+      if (pos == null) continue;
+      final rawX = pos.dx;
+      final x = math.min<double>(rawX, effective - hyphenStyleWidth);
+      if (!x.isFinite || !pos.dy.isFinite) continue;
+      if (x < 0) continue;
+      if (x > container) continue;
+      placements.add(HyphenPlacement(shyOffset: shy, x: x, y: pos.dy));
+    }
+    return placements;
+  }
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final placements = computePlacements();
+    if (placements.isEmpty) return;
+    for (final placement in placements) {
+      final hp = _buildHyphenPainter();
+      hp.paint(canvas, Offset(placement.x, placement.y));
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant VisibleHyphenPainter old) {
+    return old.spec != spec ||
+        old.maxWidth != maxWidth ||
+        old.cursorWidth != cursorWidth;
+  }
+}

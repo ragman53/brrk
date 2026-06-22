@@ -236,7 +236,47 @@ void main() {
       final readerText = tester.widget<SelectableText>(
         find.byType(SelectableText),
       );
-      expect(readerText.textAlign, isNull);
+      expect(readerText.textAlign, TextAlign.start);
+    });
+
+    testWidgets('uses academic reader body text alignment when set', (
+      tester,
+    ) async {
+      SharedPreferences.setMockInitialValues(<String, Object>{
+        'reading_layout_mode': 'academic',
+      });
+      final book = makeBook();
+      await tester.pumpWidget(
+        wrap(
+          PaperBookDetailScreen(
+            bookId: book.id,
+            getBooks: () async => booksOf(book),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      final readerText = tester.widget<SelectableText>(
+        find.byType(SelectableText),
+      );
+      expect(readerText.textAlign, TextAlign.justify);
+    });
+
+    testWidgets('renders exactly one SelectableText for the page', (
+      tester,
+    ) async {
+      final book = makeBook();
+      await tester.pumpWidget(
+        wrap(
+          PaperBookDetailScreen(
+            bookId: book.id,
+            getBooks: () async => booksOf(book),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.byType(SelectableText), findsOneWidget);
     });
 
     testWidgets('shows edit indicator on chip when page has manual edit', (

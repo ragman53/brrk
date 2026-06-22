@@ -11,11 +11,22 @@ const brrkJapaneseSerifFontFamily = 'NotoSerifJP';
 /// Uses Noto Serif for English/Latin text and Noto Serif JP for Japanese text.
 const brrkSerifFontFallback = <String>[brrkJapaneseSerifFontFamily];
 
+/// Reader layout mode.
+///
+/// `natural` is the stable default and the reader's selection model is
+/// guaranteed to operate on canonical text.
+///
+/// `academic` switches body alignment to `TextAlign.justify`. Justify
+/// changes word spacing by line; it does not guarantee uniform word
+/// spacing. English hyphenation is not yet wired up; when it is added
+/// the UI copy and tests must be updated together.
+enum ReaderLayoutMode { natural, academic }
+
 /// Density presets for reading content.
 enum ReadingDensity {
-  compact(1.25, 8, 0.0),
-  standard(1.50, 12, 0.1),
-  spacious(1.75, 18, 0.2);
+  compact(1.35, 8, 0.0),
+  standard(1.50, 12, 0.0),
+  spacious(1.65, 18, 0.0);
 
   const ReadingDensity(
     this.lineHeight,
@@ -136,6 +147,32 @@ class ReadingAppearanceControls extends ConsumerWidget {
           ),
           const SizedBox(height: 16),
 
+          // Layout mode.
+          const Text('Layout'),
+          const SizedBox(height: 4),
+          Text(
+            appearance.layoutMode == ReaderLayoutMode.natural
+                ? 'Left-aligned text with consistent word spacing'
+                : 'Justified text where word spacing may vary by line',
+            style: Theme.of(context).textTheme.bodySmall,
+          ),
+          const SizedBox(height: 8),
+          SegmentedButton<ReaderLayoutMode>(
+            segments: const [
+              ButtonSegment(
+                value: ReaderLayoutMode.natural,
+                label: Text('Natural'),
+              ),
+              ButtonSegment(
+                value: ReaderLayoutMode.academic,
+                label: Text('Academic'),
+              ),
+            ],
+            selected: {appearance.layoutMode},
+            onSelectionChanged: (s) => notifier.setLayoutMode(s.first),
+          ),
+          const SizedBox(height: 16),
+
           // Palette.
           const Text('Palette'),
           const SizedBox(height: 8),
@@ -167,24 +204,33 @@ class ReadingAppearanceControls extends ConsumerWidget {
 
 /// Reading appearance configuration.
 class ReadingAppearance {
+  /// Default font size in sp. The user can adjust within [minFontSize, maxFontSize].
+  static const double defaultFontSize = 17.0;
+  static const double minFontSize = 12.0;
+  static const double maxFontSize = 32.0;
+
   final double fontSize;
   final ReadingDensity density;
   final ReadingPalette palette;
+  final ReaderLayoutMode layoutMode;
 
   const ReadingAppearance({
-    this.fontSize = 16.0,
+    this.fontSize = defaultFontSize,
     this.density = ReadingDensity.standard,
     this.palette = ReadingPalette.defaultPalette,
+    this.layoutMode = ReaderLayoutMode.natural,
   });
 
   ReadingAppearance copyWith({
     double? fontSize,
     ReadingDensity? density,
     ReadingPalette? palette,
+    ReaderLayoutMode? layoutMode,
   }) => ReadingAppearance(
     fontSize: fontSize ?? this.fontSize,
     density: density ?? this.density,
     palette: palette ?? this.palette,
+    layoutMode: layoutMode ?? this.layoutMode,
   );
 
   /// Heading sizes scaled from body fontSize.
@@ -192,12 +238,24 @@ class ReadingAppearance {
   double get heading2Size => (fontSize + 5).clamp(12.0, 32.0);
   double get heading3Size => (fontSize + 3).clamp(12.0, 28.0);
 
-  /// TextStyle for body text.
+  /// Body `TextAlign` derived from the reader layout mode.
+  ///
+  /// `natural` → start; `academic` → justify. Headings, lists, and code
+  /// always stay start-aligned and are not affected by this getter.
+  TextAlign get bodyTextAlign => switch (layoutMode) {
+    ReaderLayoutMode.natural => TextAlign.start,
+    ReaderLayoutMode.academic => TextAlign.justify,
+  };
+
+  /// TextStyle for body text. Letter spacing is always 0; layout-mode-driven
+  /// spacing changes are achieved through `bodyTextAlign` and Flutter's
+  /// native justify behavior.
   TextStyle get bodyStyle => TextStyle(
     fontSize: fontSize,
     fontWeight: FontWeight.normal,
     height: density.lineHeight,
-    letterSpacing: density.letterSpacing,
+    letterSpacing: 0.0,
+    wordSpacing: 0.0,
     color: palette.foreground,
     fontFamily: brrkSerifFontFamily,
     fontFamilyFallback: brrkSerifFontFallback,
@@ -228,7 +286,8 @@ class ReadingAppearance {
     fontSize: fontSize,
     fontWeight: FontWeight.normal,
     height: density.lineHeight,
-    letterSpacing: density.letterSpacing,
+    letterSpacing: 0.0,
+    wordSpacing: 0.0,
     color: palette.foreground,
     fontFamily: fontFamily ?? brrkSerifFontFamily,
     fontFamilyFallback: brrkSerifFontFallback,
@@ -244,27 +303,43 @@ class ReadingAppearanceNotifier extends StateNotifier<ReadingAppearance> {
   static const _fontSizeKey = 'reading_font_size';
   static const _densityKey = 'reading_density';
   static const _paletteKey = 'reading_palette';
+  static const _layoutModeKey = 'reading_layout_mode';
 
   Future<void> _load() async {
     final prefs = await SharedPreferences.getInstance();
-    final fontSize = prefs.getDouble(_fontSizeKey) ?? 16.0;
+    final fontSize =
+        prefs.getDouble(_fontSizeKey) ?? ReadingAppearance.defaultFontSize;
     final densityStr = prefs.getString(_densityKey);
     final paletteStr = prefs.getString(_paletteKey);
+    final layoutModeStr = prefs.getString(_layoutModeKey);
     final density =
         ReadingDensity.values.where((d) => d.name == densityStr).firstOrNull ??
         ReadingDensity.standard;
     final palette =
         ReadingPalette.values.where((p) => p.name == paletteStr).firstOrNull ??
         ReadingPalette.defaultPalette;
+    final layoutMode =
+        ReaderLayoutMode.values
+            .where((m) => m.name == layoutModeStr)
+            .firstOrNull ??
+        ReaderLayoutMode.natural;
+    if (!mounted) return;
     state = ReadingAppearance(
-      fontSize: fontSize.clamp(12.0, 32.0),
+      fontSize: fontSize.clamp(
+        ReadingAppearance.minFontSize,
+        ReadingAppearance.maxFontSize,
+      ),
       density: density,
       palette: palette,
+      layoutMode: layoutMode,
     );
   }
 
   Future<void> setFontSize(double size) async {
-    final clamped = size.clamp(12.0, 32.0);
+    final clamped = size.clamp(
+      ReadingAppearance.minFontSize,
+      ReadingAppearance.maxFontSize,
+    );
     state = state.copyWith(fontSize: clamped);
     final prefs = await SharedPreferences.getInstance();
     await prefs.setDouble(_fontSizeKey, clamped);
@@ -280,6 +355,12 @@ class ReadingAppearanceNotifier extends StateNotifier<ReadingAppearance> {
     state = state.copyWith(palette: palette);
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_paletteKey, palette.name);
+  }
+
+  Future<void> setLayoutMode(ReaderLayoutMode mode) async {
+    state = state.copyWith(layoutMode: mode);
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_layoutModeKey, mode.name);
   }
 }
 

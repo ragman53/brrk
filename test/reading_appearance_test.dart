@@ -23,6 +23,7 @@ void main() {
       expect(find.text('Font size'), findsOneWidget);
       expect(find.byType(Slider), findsOneWidget);
       expect(find.text('Density'), findsOneWidget);
+      expect(find.text('Layout'), findsOneWidget);
       expect(find.text('Palette'), findsOneWidget);
     });
 
@@ -32,7 +33,7 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      expect(find.text('16sp'), findsOneWidget); // default
+      expect(find.text('17sp'), findsOneWidget); // default
     });
   });
 
@@ -54,6 +55,77 @@ void main() {
         appearance.heading1Style().fontFamilyFallback,
         brrkSerifFontFallback,
       );
+    });
+
+    test('default font size is 17sp and range is preserved', () {
+      const appearance = ReadingAppearance();
+      expect(appearance.fontSize, ReadingAppearance.defaultFontSize);
+      expect(ReadingAppearance.defaultFontSize, 17.0);
+      expect(ReadingAppearance.minFontSize, 12.0);
+      expect(ReadingAppearance.maxFontSize, 32.0);
+    });
+
+    test('all densities use letter spacing 0 and body word spacing is 0', () {
+      for (final d in ReadingDensity.values) {
+        expect(d.letterSpacing, 0.0, reason: 'density ${d.name}');
+      }
+      const appearance = ReadingAppearance();
+      expect(appearance.bodyStyle.letterSpacing, 0.0);
+      expect(appearance.bodyStyle.wordSpacing, 0.0);
+      expect(appearance.paragraphStyle().letterSpacing, 0.0);
+      expect(appearance.paragraphStyle().wordSpacing, 0.0);
+    });
+
+    test('density line heights match spec', () {
+      expect(ReadingDensity.compact.lineHeight, 1.35);
+      expect(ReadingDensity.standard.lineHeight, 1.50);
+      expect(ReadingDensity.spacious.lineHeight, 1.65);
+    });
+
+    test('density paragraph spacings match spec', () {
+      expect(ReadingDensity.compact.paragraphSpacing, 8);
+      expect(ReadingDensity.standard.paragraphSpacing, 12);
+      expect(ReadingDensity.spacious.paragraphSpacing, 18);
+    });
+  });
+
+  group('ReaderLayoutMode', () {
+    test('default is natural', () {
+      const appearance = ReadingAppearance();
+      expect(appearance.layoutMode, ReaderLayoutMode.natural);
+    });
+
+    test('bodyTextAlign returns start for natural', () {
+      const appearance = ReadingAppearance(
+        layoutMode: ReaderLayoutMode.natural,
+      );
+      expect(appearance.bodyTextAlign, TextAlign.start);
+    });
+
+    test('bodyTextAlign returns justify for academic', () {
+      const appearance = ReadingAppearance(
+        layoutMode: ReaderLayoutMode.academic,
+      );
+      expect(appearance.bodyTextAlign, TextAlign.justify);
+    });
+
+    test('layout mode persists across notifier reload', () async {
+      SharedPreferences.setMockInitialValues(<String, Object>{
+        'reading_layout_mode': 'academic',
+      });
+      final container = ProviderContainer();
+      addTearDown(container.dispose);
+
+      for (var i = 0; i < 10; i++) {
+        await Future<void>.delayed(Duration.zero);
+        if (container.read(readingAppearanceProvider).layoutMode ==
+            ReaderLayoutMode.academic) {
+          break;
+        }
+      }
+
+      final appearance = container.read(readingAppearanceProvider);
+      expect(appearance.layoutMode, ReaderLayoutMode.academic);
     });
   });
 
