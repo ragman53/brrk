@@ -1,10 +1,11 @@
 // SPDX-License-Identifier: MIT
 //
-// FEAT-SPEC §10.2: combined surface for the debug overlay proof.
+// Paper Academic surface for the decorative soft-hyphen overlay.
 //
 // `AcademicSelectableText` is a single `SelectableText` plus one
-// non-interactive decorative `CustomPaint` layer. It is the only
-// debug-gate surface that exercises the overlay.
+// non-interactive decorative `CustomPaint` layer. The overlay may
+// paint a narrow hanging hyphen into the existing right reader margin,
+// but it must not affect text measurement or selection.
 //
 // The selectable surface uses `spec.displayText`. The painter also
 // uses `spec.displayText`. There is no separate "displayText" field
@@ -29,6 +30,11 @@ import 'visible_hyphen_painter.dart';
 /// by the Paper Academic reader. Also exercised by the debug-only
 /// soft-hyphen selection gate.
 class AcademicSelectableText extends StatelessWidget {
+  /// Paint-only gutter that lets the decorative hyphen hang into the
+  /// existing right reader margin without reducing the selectable
+  /// text width or changing line breaks.
+  static const double hangingHyphenGutter = 16.0;
+
   const AcademicSelectableText({
     super.key,
     required this.spec,
@@ -77,7 +83,7 @@ class AcademicSelectableText extends StatelessWidget {
       builder: (context, constraints) {
         final width = constraints.maxWidth;
         return Stack(
-          clipBehavior: Clip.hardEdge,
+          clipBehavior: Clip.none,
           children: [
             SelectableText(
               resolvedSpec.displayText,
@@ -97,14 +103,19 @@ class AcademicSelectableText extends StatelessWidget {
               onSelectionChanged: (selection, cause) =>
                   onSelectionChanged(selection, cause),
             ),
-            Positioned.fill(
+            Positioned(
+              left: 0,
+              top: 0,
+              right: -hangingHyphenGutter,
+              bottom: 0,
               child: IgnorePointer(
                 child: ExcludeSemantics(
                   child: CustomPaint(
                     key: const Key('academic-overlay-paint'),
                     painter: VisibleHyphenPainter(
                       spec: resolvedSpec,
-                      maxWidth: width,
+                      layoutWidth: width,
+                      rightPaintOverflow: hangingHyphenGutter,
                       cursorWidth: cursorWidth,
                     ),
                   ),

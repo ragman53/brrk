@@ -27,7 +27,10 @@
 // `SelectableText` uses the default `cursorWidth: 2.0` for
 // `Material`, so the effective content width on Android is
 // `constraints.maxWidth - 3.0`. The probe painter subtracts the same
-// amount so its line breaks mirror the actual selectable surface.
+// amount from the original selectable layout width so its line breaks
+// mirror the actual selectable surface. The decorative hyphen may
+// hang into a separate paint-only gutter, but that gutter is never
+// used for text layout.
 
 import 'dart:math' as math;
 
@@ -84,7 +87,8 @@ class HyphenPlacement {
   final int shyOffset;
 
   /// Painted x coordinate of the decorative hyphen glyph. The
-  /// painter clamps this inside the content bounds.
+  /// decorative hyphen may hang into the existing reader margin, but
+  /// it must never be shifted left over the preceding glyph.
   final double x;
 
   /// Painted top-left y coordinate of the decorative hyphen glyph.
@@ -103,16 +107,22 @@ class HyphenPlacement {
 class VisibleHyphenPainter extends CustomPainter {
   const VisibleHyphenPainter({
     required this.spec,
-    required this.maxWidth,
+    required this.layoutWidth,
+    this.rightPaintOverflow = 0,
     this.cursorWidth = _kDefaultCursorWidth,
   });
 
   final ReaderTextLayoutSpec spec;
 
-  /// Container width as reported by `LayoutBuilder`. The probe
-  /// painter will subtract the caret margin from this value before
-  /// laying out.
-  final double maxWidth;
+  /// Original selectable text layout width as reported by
+  /// `LayoutBuilder`. The probe painter subtracts the caret margin
+  /// from this value before laying out. Do not include
+  /// [rightPaintOverflow] here; doing so would change line breaks.
+  final double layoutWidth;
+
+  /// Paint-only right gutter for the decorative hyphen. This expands
+  /// the overlay canvas but is not part of text measurement.
+  final double rightPaintOverflow;
 
   /// Mirrored `SelectableText` / `RenderEditable` `cursorWidth`.
   final double cursorWidth;
@@ -139,7 +149,7 @@ class VisibleHyphenPainter extends CustomPainter {
       maxLines: spec.maxLines,
       ellipsis: spec.ellipsis,
     );
-    final containerWidth = width ?? maxWidth;
+    final containerWidth = width ?? layoutWidth;
     final effective = visibleHyphenEffectiveWidth(
       containerWidth: containerWidth,
       cursorWidth: cursorWidth,
@@ -209,8 +219,16 @@ class VisibleHyphenPainter extends CustomPainter {
   /// decorative hyphen for [shyOffset], or `null` if no stable
   /// position exists.
   Offset? _positionForMarker(TextPainter probe, int shyOffset) {
-    return _trailingGlyphBox(probe, shyOffset) ??
-        _upstreamCaret(probe, shyOffset);
+    final trailingGlyph = _trailingGlyphBox(probe, shyOffset);
+    if (trailingGlyph != null) return trailingGlyph;
+
+    // The caret fallback is intentionally conservative. If the
+    // trailing glyph box is unavailable, we cannot prove that the
+    // fallback starts at or after the preceding fragment edge, so we
+    // omit this one decorative hyphen instead of shifting it left into
+    // the text.
+    _upstreamCaret(probe, shyOffset);
+    return null;
   }
 
   /// Builds a `TextPainter` for the single decorative hyphen glyph at
@@ -242,36 +260,45 @@ class VisibleHyphenPainter extends CustomPainter {
   /// layout. Public for testability (FEAT-SPEC §15.4).
   ///
   /// Returns at most one [HyphenPlacement] per confirmed `U+00AD`
-  /// break. The x coordinate is clamped inside the effective content
-  /// bounds so the painted glyph never escapes the row.
-  List<HyphenPlacement> computePlacements({double? containerWidth}) {
+  /// break. The x coordinate starts just after the trailing visible
+  /// glyph. It may hang into the existing reader margin, but it is
+  /// never clamped left over the preceding glyph.
+  List<HyphenPlacement> computePlacements({
+    double? testLayoutWidth,
+    double? testRightPaintOverflow,
+  }) {
     if (spec.displayText.isEmpty) return const [];
-    final container = containerWidth ?? maxWidth;
-    if (!container.isFinite || container <= 0) return const [];
+    final currentLayoutWidth = testLayoutWidth ?? layoutWidth;
+    final currentRightPaintOverflow =
+        testRightPaintOverflow ?? rightPaintOverflow;
+    if (!currentLayoutWidth.isFinite || currentLayoutWidth <= 0) {
+      return const [];
+    }
     if (spec.textAlign != TextAlign.justify) {
       // Decorative hyphens only matter when justified; otherwise the
       // user already opted out of academic layout.
       return const [];
     }
 
-    final probe = buildProbePainter(width: container);
+    final probe = buildProbePainter(width: currentLayoutWidth);
     final hyphenStyleWidth = _measureHyphenWidth();
     if (hyphenStyleWidth <= 0) return const [];
 
-    final effective = visibleHyphenEffectiveWidth(
-      containerWidth: container,
-      cursorWidth: cursorWidth,
-    );
+    final paintRightLimit = currentLayoutWidth + currentRightPaintOverflow;
+    const opticalGap = 0.5;
     final placements = <HyphenPlacement>[];
     for (final shy in _softHyphenOffsets()) {
       if (!_isConfirmedBreak(probe, shy)) continue;
       final pos = _positionForMarker(probe, shy);
       if (pos == null) continue;
-      final rawX = pos.dx;
-      final x = math.min<double>(rawX, effective - hyphenStyleWidth);
+      final x = pos.dx + opticalGap;
       if (!x.isFinite || !pos.dy.isFinite) continue;
       if (x < 0) continue;
-      if (x > container) continue;
+      if (x + hyphenStyleWidth > paintRightLimit) {
+        // Fail safe: omit this decorative hyphen rather than overlap
+        // the preceding glyph by shifting it left.
+        continue;
+      }
       placements.add(HyphenPlacement(shyOffset: shy, x: x, y: pos.dy));
     }
     return placements;
@@ -290,7 +317,8 @@ class VisibleHyphenPainter extends CustomPainter {
   @override
   bool shouldRepaint(covariant VisibleHyphenPainter old) {
     return old.spec != spec ||
-        old.maxWidth != maxWidth ||
+        old.layoutWidth != layoutWidth ||
+        old.rightPaintOverflow != rightPaintOverflow ||
         old.cursorWidth != cursorWidth;
   }
 }

@@ -9,7 +9,7 @@ import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   group('AcademicSelectableText', () {
-    testWidgets('contains exactly one SelectableText and one CustomPaint', (
+    testWidgets('keeps one SelectableText and a wider paint-only overlay', (
       tester,
     ) async {
       const spec = ReaderTextLayoutSpec(
@@ -38,6 +38,25 @@ void main() {
       expect(find.byType(SelectableText), findsOneWidget);
       expect(find.byKey(const Key('academic-overlay-paint')), findsOneWidget);
       expect(find.byKey(const Key('academic-selectable-text')), findsOneWidget);
+
+      final stackFinder = find.descendant(
+        of: find.byType(AcademicSelectableText),
+        matching: find.byType(Stack),
+      );
+      final stack = tester.widget<Stack>(stackFinder);
+      expect(stack.clipBehavior, Clip.none);
+
+      final selectableBox = tester.renderObject<RenderBox>(
+        find.byKey(const Key('academic-selectable-text')),
+      );
+      final overlayBox = tester.renderObject<RenderBox>(
+        find.byKey(const Key('academic-overlay-paint')),
+      );
+      expect(selectableBox.size.width, 104);
+      expect(
+        overlayBox.size.width,
+        selectableBox.size.width + AcademicSelectableText.hangingHyphenGutter,
+      );
       // lastSelection may be null or empty in tests (no user input);
       // we only assert it is a string.
       expect(lastSelection, anyOf(isNull, isA<String>()));
