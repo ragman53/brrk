@@ -27,7 +27,7 @@ void main() {
                 child: AcademicSelectableText(
                   spec: spec,
                   sourceText: 'philosophical',
-                  onSelectionChanged: (s) => lastSelection = s.toString(),
+                  onSelectionChanged: (s, _) => lastSelection = s.toString(),
                 ),
               ),
             ),
@@ -60,7 +60,7 @@ void main() {
                 child: AcademicSelectableText(
                   spec: spec,
                   sourceText: 'philosophical',
-                  onSelectionChanged: (_) {},
+                  onSelectionChanged: (_, _) {},
                 ),
               ),
             ),
@@ -110,7 +110,7 @@ void main() {
                   child: AcademicSelectableText(
                     spec: spec,
                     sourceText: 'philosophical',
-                    onSelectionChanged: (_) {},
+                    onSelectionChanged: (_, _) {},
                   ),
                 ),
               ),
@@ -146,7 +146,7 @@ void main() {
                 spec: spec,
                 sourceText: 'philosophical',
                 cursorWidth: 4.0,
-                onSelectionChanged: (_) {},
+                onSelectionChanged: (_, _) {},
               ),
             ),
           ),
@@ -157,6 +157,55 @@ void main() {
         find.byKey(const Key('academic-selectable-text')),
       );
       expect(selectable.cursorWidth, 4.0);
+    });
+
+    testWidgets('forwards SelectionChangedCause from primary SelectableText', (
+      tester,
+    ) async {
+      const spec = ReaderTextLayoutSpec(
+        displayText: 'philo\u00ADsophical',
+        resolvedTextStyle: TextStyle(fontSize: 22, height: 1.25),
+        textAlign: TextAlign.justify,
+      );
+      TextSelection? capturedSelection;
+      SelectionChangedCause? capturedCause;
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: Center(
+              child: SizedBox(
+                width: 104,
+                child: AcademicSelectableText(
+                  spec: spec,
+                  sourceText: 'philosophical',
+                  onSelectionChanged: (selection, cause) {
+                    capturedSelection = selection;
+                    capturedCause = cause;
+                  },
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+
+      final selectableFinder = find.byKey(
+        const Key('academic-selectable-text'),
+      );
+      final selectable = tester.widget<SelectableText>(selectableFinder);
+      // Both causes must be forwarded by the wrapper, not dropped.
+      selectable.onSelectionChanged!(
+        const TextSelection(baseOffset: 0, extentOffset: 5),
+        SelectionChangedCause.longPress,
+      );
+      expect(capturedSelection, isNotNull);
+      expect(capturedCause, SelectionChangedCause.longPress);
+
+      selectable.onSelectionChanged!(
+        const TextSelection.collapsed(offset: 2),
+        SelectionChangedCause.tap,
+      );
+      expect(capturedCause, SelectionChangedCause.tap);
     });
   });
 }

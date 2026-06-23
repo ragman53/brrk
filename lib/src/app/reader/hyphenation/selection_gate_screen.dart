@@ -170,7 +170,10 @@ class _SelectionGateScreenState extends State<SelectionGateScreen> {
     });
   }
 
-  void _onOverlaySelectionChanged(TextSelection sel) {
+  void _onOverlaySelectionChanged(
+    TextSelection sel,
+    SelectionChangedCause? cause,
+  ) {
     setState(() => _overlaySelection = sel);
   }
 

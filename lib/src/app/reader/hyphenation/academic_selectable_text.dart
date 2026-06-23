@@ -25,7 +25,9 @@ import 'package:flutter/material.dart';
 import 'reader_text_layout_spec.dart';
 import 'visible_hyphen_painter.dart';
 
-/// Debug-gate-only combined surface for the decorative hyphen overlay.
+/// Combined surface for the visible decorative hyphen overlay used
+/// by the Paper Academic reader. Also exercised by the debug-only
+/// soft-hyphen selection gate.
 class AcademicSelectableText extends StatelessWidget {
   const AcademicSelectableText({
     super.key,
@@ -45,10 +47,14 @@ class AcademicSelectableText extends StatelessWidget {
   /// canonical word (FEAT-SPEC §10.9).
   final String sourceText;
 
-  /// Selection callback in display coordinates. Callers must run the
-  /// result through a `HyphenatedText.toSourceSelection` mapping
-  /// before passing to Add Note / Vocabulary.
-  final ValueChanged<TextSelection> onSelectionChanged;
+  /// Selection callback in display coordinates, with the original
+  /// `SelectionChangedCause` forwarded so the caller can preserve
+  /// long-press / double-tap semantics for vocabulary recovery.
+  /// Callers must run the selection through a
+  /// `HyphenatedText.toSourceSelection` mapping before passing to
+  /// Add Note / Vocabulary.
+  final void Function(TextSelection selection, SelectionChangedCause? cause)
+  onSelectionChanged;
 
   final FocusNode? focusNode;
   final bool showCursor;
@@ -89,7 +95,7 @@ class AcademicSelectableText extends StatelessWidget {
               cursorWidth: cursorWidth,
               semanticsLabel: sourceText,
               onSelectionChanged: (selection, cause) =>
-                  onSelectionChanged(selection),
+                  onSelectionChanged(selection, cause),
             ),
             Positioned.fill(
               child: IgnorePointer(
