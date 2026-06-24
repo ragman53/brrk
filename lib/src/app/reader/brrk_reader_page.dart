@@ -13,7 +13,7 @@ import 'reader_surface.dart';
 /// canonical page Markdown; this widget emits canonical
 /// [ReaderSelection] events with exact page-source offsets only when the
 /// native planner can prove them.
-class BrrkReaderPage extends StatelessWidget {
+class BrrkReaderPage extends StatefulWidget {
   const BrrkReaderPage({
     super.key,
     required this.markdown,
@@ -40,51 +40,63 @@ class BrrkReaderPage extends StatelessWidget {
   /// to keep PDF from inheriting `flutter_markdown`'s scroll ownership.
   final ScrollController? scrollController;
 
-  /// The plan selected for [markdown] (or [planOverride] when supplied).
-  ReaderMarkdownPlan get plan => planOverride ?? planReaderMarkdown(markdown);
+  @override
+  State<BrrkReaderPage> createState() => _BrrkReaderPageState();
+}
 
-  /// Convenience: the strategy chosen for [markdown].
-  ReaderRenderStrategy get strategy => plan.strategy;
+class _BrrkReaderPageState extends State<BrrkReaderPage> {
+  String? _lastDiagnosticKey;
+
+  ReaderMarkdownPlan get _plan =>
+      widget.planOverride ?? planReaderMarkdown(widget.markdown);
+
+  /// Convenience: the strategy chosen for [widget.markdown].
+  ReaderRenderStrategy get strategy => _plan.strategy;
 
   @override
   Widget build(BuildContext context) {
-    final resolvedPlan = plan;
+    final resolvedPlan = _plan;
 
+    // REVIEW.md §9: log only when the resolved strategy/reason key
+    // changes from a stateful diagnostic seam. The planner returns a
+    // new plan instance per call, so we compare a stable
+    // (strategy,reason) string instead of object identity. Document
+    // content is never logged.
+    final diagnosticKey = resolvedPlan is LegacyMarkdownPlan
+        ? 'legacyMarkdown:${resolvedPlan.reason}'
+        : 'nativeProse';
     assert(() {
-      if (resolvedPlan is LegacyMarkdownPlan) {
-        debugPrint(
-          'BrrkReaderPage strategy=legacyMarkdown '
-          'reason=${resolvedPlan.reason}',
-        );
-      } else {
-        debugPrint('BrrkReaderPage strategy=nativeProse');
+      if (_lastDiagnosticKey != diagnosticKey) {
+        debugPrint('BrrkReaderPage strategy=$diagnosticKey');
+        _lastDiagnosticKey = diagnosticKey;
       }
       return true;
     }());
+
     final Widget body = switch (resolvedPlan) {
       NativeReaderPlan(:final blocks) => _NativeReaderBody(
         blocks: blocks,
-        appearance: appearance,
-        onSelectionChanged: onSelectionChanged,
+        appearance: widget.appearance,
+        onSelectionChanged: widget.onSelectionChanged,
       ),
       LegacyMarkdownPlan() => _LegacyMarkdownBody(
-        markdown: markdown,
-        appearance: appearance,
-        onSelectionChanged: onSelectionChanged,
+        markdown: widget.markdown,
+        appearance: widget.appearance,
+        onSelectionChanged: widget.onSelectionChanged,
       ),
     };
 
-    final scrollable = scrollController != null
+    final scrollable = widget.scrollController != null
         ? SingleChildScrollView(
-            controller: scrollController,
+            controller: widget.scrollController,
             padding: EdgeInsets.symmetric(
-              vertical: appearance.density.paragraphSpacing + 4,
+              vertical: widget.appearance.density.paragraphSpacing + 4,
             ),
             child: body,
           )
         : SingleChildScrollView(
             padding: EdgeInsets.symmetric(
-              vertical: appearance.density.paragraphSpacing + 4,
+              vertical: widget.appearance.density.paragraphSpacing + 4,
             ),
             child: body,
           );
@@ -107,11 +119,11 @@ class _NativeReaderBody extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final children = <Widget>[];
-    for (final block in blocks) {
+    for (var i = 0; i < blocks.length; i++) {
       if (children.isNotEmpty) {
         children.add(SizedBox(height: appearance.density.paragraphSpacing));
       }
-      children.add(_buildBlock(block));
+      children.add(_buildBlock(blocks[i], i));
     }
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -120,8 +132,7 @@ class _NativeReaderBody extends StatelessWidget {
     );
   }
 
-  Widget _buildBlock(ReaderBlock block) {
-    final blockIndex = blocks.indexOf(block);
+  Widget _buildBlock(ReaderBlock block, int blockIndex) {
     return switch (block) {
       ReaderParagraphBlock(:final text, :final sourceStart) =>
         BrrkReaderParagraph(
