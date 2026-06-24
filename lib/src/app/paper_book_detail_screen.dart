@@ -17,9 +17,8 @@ import 'package:brrk/src/app/note_editor.dart';
 import 'package:brrk/src/app/markdown_editor.dart';
 import 'package:brrk/src/app/ocr_disclosure.dart';
 import 'package:brrk/src/app/reading_appearance.dart';
-import 'package:brrk/src/app/reader/hyphenation/academic_selectable_text.dart';
-import 'package:brrk/src/app/reader/hyphenation/paper_academic_hyphenation.dart';
-import 'package:brrk/src/app/reader/reader_surface.dart';
+import 'package:brrk/src/app/reader/brrk_reader_page.dart';
+import 'package:brrk/src/app/reader/reader_selection.dart';
 import 'package:brrk/src/app/settings_screen.dart';
 import 'package:brrk/src/rust/api/storage.dart' as storage;
 import 'package:brrk/src/rust/api/models.dart';
@@ -855,22 +854,6 @@ class _PagesBodyState extends State<_PagesBody> {
 
 // ─── Page view ────────────────────────────────────────────────────────────────
 
-/// Test-only override seam. When non-null, the paper academic
-/// hyphenation seam uses this instance instead of the default
-/// `PaperAcademicHyphenation`. Used by widget tests to inject a
-/// custom `EmergencyWordBreaker` for layout-only assertions.
-PaperAcademicHyphenation? _paperHyphenationOverride;
-
-@visibleForTesting
-void setPaperHyphenationOverrideForTest(PaperAcademicHyphenation? instance) =>
-    _paperHyphenationOverride = instance;
-
-@visibleForTesting
-void clearPaperHyphenationOverrideForTest() => _paperHyphenationOverride = null;
-
-PaperAcademicHyphenation _resolvePaperHyphenation() =>
-    _paperHyphenationOverride ?? PaperAcademicHyphenation();
-
 class _PageView extends StatefulWidget {
   final PaperPage page;
   final List<Note> notes;
@@ -907,6 +890,7 @@ class _PageView extends StatefulWidget {
 
 class _PageViewState extends State<_PageView> {
   String? _selectedText;
+  String? _selectedCanonical;
   int? _selectionStart;
   int? _selectionEnd;
 
@@ -923,23 +907,12 @@ class _PageViewState extends State<_PageView> {
       ? widget.page.manualMarkdown!
       : widget.page.markdown;
 
-  /// Returns the rendered Paper surface for the current page +
-  /// reading appearance. The canonical source text is always the
-  /// editor/manual override (or OCR markdown fallback), and the
-  /// display text may additionally contain inserted `U+00AD` markers
-  /// when Academic mode is active and the hyphenator produced them.
-  PaperHyphenationRender _render() {
-    return _resolvePaperHyphenation().render(
-      canonicalSource: _displayedText,
-      appearance: widget.readingAppearance,
-    );
-  }
-
   @override
   void didUpdateWidget(covariant _PageView oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.page.id != widget.page.id) {
       _selectedText = null;
+      _selectedCanonical = null;
       _selectionStart = null;
       _selectionEnd = null;
       _lookupText = null;
@@ -948,14 +921,11 @@ class _PageViewState extends State<_PageView> {
     }
   }
 
-  void _handleSelectionChanged(
-    TextSelection sel,
-    SelectionChangedCause? cause,
-  ) {
-    final render = _render();
-    if (!sel.isValid || sel.isCollapsed) {
+  void _handleReaderSelection(ReaderSelection? event) {
+    if (event == null) {
       setState(() {
         _selectedText = null;
+        _selectedCanonical = null;
         _selectionStart = null;
         _selectionEnd = null;
         _lookupText = null;
@@ -964,31 +934,31 @@ class _PageViewState extends State<_PageView> {
       });
       return;
     }
-    final start = sel.start.clamp(0, render.displayText.length);
-    final end = sel.end.clamp(0, render.displayText.length);
+    final contextText = event.canonicalContext;
+    final start = event.selection.start.clamp(0, contextText.length);
+    final end = event.selection.end.clamp(0, contextText.length);
     if (end <= start) return;
-    // Map display selection → canonical source selection before any
-    // Add Note / Look up / vocabulary logic. The vocabulary candidate
-    // is derived from the canonical source text, so inserted
-    // U+00AD markers never influence Add Note/Vocab.
-    final sourceSelection = render.canonicalSelection(
-      TextSelection(baseOffset: start, extentOffset: end),
-    );
-    final sourceText = render.sourceText;
-    final canonicalStart = sourceSelection.start.clamp(0, sourceText.length);
-    final canonicalEnd = sourceSelection.end.clamp(0, sourceText.length);
-    final canonicalRaw = canonicalEnd > canonicalStart
-        ? sourceText.substring(canonicalStart, canonicalEnd)
-        : '';
+    final selected = contextText.substring(start, end);
     final candidate = vocabularyCandidateFromSelection(
-      context: sourceText,
-      selection: sourceSelection,
-      cause: cause,
+      context: contextText,
+      selection: TextSelection(baseOffset: start, extentOffset: end),
+      cause: event.cause,
     );
+    // FEAT-SPEC §11.1: Paper note offsets are stored as UTF-8 byte offsets
+    // (rust/src/api/models.rs:245-250). Convert exact native page-source
+    // code-unit offsets now; fall back to null when exactness is not proven.
+    final pageSource = _displayedText;
+    final noteStart = event.sourceStart == null
+        ? null
+        : utf8ByteOffsetForCodeUnitOffset(pageSource, event.sourceStart);
+    final noteEnd = event.sourceEnd == null
+        ? null
+        : utf8ByteOffsetForCodeUnitOffset(pageSource, event.sourceEnd);
     setState(() {
-      _selectionStart = canonicalStart;
-      _selectionEnd = canonicalEnd;
-      _selectedText = canonicalRaw.trim();
+      _selectionStart = noteStart;
+      _selectionEnd = noteEnd;
+      _selectedText = selected.trim();
+      _selectedCanonical = contextText;
       _lookupText = candidate?.text;
       _lookupStart = candidate?.start;
       _lookupEnd = candidate?.end;
@@ -1004,6 +974,7 @@ class _PageViewState extends State<_PageView> {
     if (!mounted) return;
     setState(() {
       _selectedText = null;
+      _selectedCanonical = null;
       _selectionStart = null;
       _selectionEnd = null;
       _lookupText = null;
@@ -1015,18 +986,19 @@ class _PageViewState extends State<_PageView> {
   Future<void> _onLookUpPressed() async {
     final lookupText = _lookupText;
     if (lookupText == null || lookupText.isEmpty) return;
-    // Always pass the canonical (no-marker) page context to
-    // vocabulary lookup. Display text containing U+00AD must never
-    // reach Rust or the Mistral Chat request.
+    // Always pass the canonical (no-marker) page context to vocabulary
+    // lookup. Display text containing U+00AD must never reach Rust or the
+    // Mistral Chat request.
     final started = await widget.onLookUp(
       selectedText: lookupText,
-      pageContext: _render().sourceText,
+      pageContext: _selectedCanonical ?? _displayedText,
       startOffset: _lookupStart,
       endOffset: _lookupEnd,
     );
     if (!mounted || !started) return;
     setState(() {
       _selectedText = null;
+      _selectedCanonical = null;
       _selectionStart = null;
       _selectionEnd = null;
       _lookupText = null;
@@ -1119,17 +1091,10 @@ class _PageViewState extends State<_PageView> {
               Positioned.fill(
                 child: Container(
                   color: appearance.palette.background,
-                  child: SingleChildScrollView(
-                    padding: EdgeInsets.symmetric(
-                      vertical: appearance.density.paragraphSpacing + 4,
-                    ),
-                    child: ReaderSurface(
-                      child: _PaperBodyText(
-                        render: _render(),
-                        onSelectionChanged: (selection, cause) =>
-                            _handleSelectionChanged(selection, cause),
-                      ),
-                    ),
+                  child: BrrkReaderPage(
+                    markdown: _displayedText,
+                    appearance: appearance,
+                    onSelectionChanged: _handleReaderSelection,
                   ),
                 ),
               ),
@@ -1149,35 +1114,6 @@ class _PageViewState extends State<_PageView> {
 }
 
 // ─── Export JSON sheet ─────────────────────────────────────────────────────
-
-class _PaperBodyText extends StatelessWidget {
-  const _PaperBodyText({
-    required this.render,
-    required this.onSelectionChanged,
-  });
-
-  final PaperHyphenationRender render;
-  final void Function(TextSelection, SelectionChangedCause?) onSelectionChanged;
-
-  @override
-  Widget build(BuildContext context) {
-    if (!render.overlayEnabled) {
-      return SelectableText(
-        render.displayText,
-        onSelectionChanged: onSelectionChanged,
-        textAlign: render.textAlign,
-        style: render.bodyStyle,
-      );
-    }
-    final spec = render.toReaderTextLayoutSpec()!;
-    return AcademicSelectableText(
-      spec: spec,
-      sourceText: render.sourceText,
-      onSelectionChanged: (selection, cause) =>
-          onSelectionChanged(selection, cause),
-    );
-  }
-}
 
 class _ExportJsonSheet extends StatefulWidget {
   final PaperBook book;

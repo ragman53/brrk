@@ -3,7 +3,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:brrk/src/app/paper_book_detail_screen.dart';
+import 'package:brrk/src/app/reader/brrk_reader_page.dart';
+import 'package:brrk/src/app/reader/hyphenation/academic_selectable_text.dart';
 import 'package:brrk/src/rust/api/models.dart';
+import 'package:flutter_markdown/flutter_markdown.dart';
 
 void main() {
   group('PaperBookDetailScreen', () {
@@ -233,9 +236,10 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      final readerText = tester.widget<SelectableText>(
-        find.byType(SelectableText),
-      );
+      expect(find.byType(BrrkReaderPage), findsOneWidget);
+      final readerText = tester
+          .widgetList<SelectableText>(find.byType(SelectableText))
+          .last;
       expect(readerText.textAlign, TextAlign.start);
     });
 
@@ -256,15 +260,14 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      final readerText = tester.widget<SelectableText>(
-        find.byType(SelectableText),
-      );
+      expect(find.byType(BrrkReaderPage), findsOneWidget);
+      final readerText = tester
+          .widgetList<SelectableText>(find.byType(SelectableText))
+          .last;
       expect(readerText.textAlign, TextAlign.justify);
     });
 
-    testWidgets('renders exactly one SelectableText for the page', (
-      tester,
-    ) async {
+    testWidgets('routes page content through BrrkReaderPage', (tester) async {
       final book = makeBook();
       await tester.pumpWidget(
         wrap(
@@ -276,7 +279,72 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      expect(find.byType(SelectableText), findsOneWidget);
+      expect(find.byType(BrrkReaderPage), findsOneWidget);
+      expect(find.byType(SelectableText), findsWidgets);
+    });
+
+    testWidgets('native Academic page uses visible hyphen paragraph surface', (
+      tester,
+    ) async {
+      SharedPreferences.setMockInitialValues(<String, Object>{
+        'reading_layout_mode': 'academic',
+      });
+      final book = makeBook(
+        pages: [
+          PaperPage(
+            id: 'page-1',
+            imagePath: 'images/book-1/page-1.jpg',
+            ocrHash: 'sha256:abc',
+            markdown: 'A philosophical investigation.',
+            notes: const [],
+          ),
+        ],
+      );
+      await tester.pumpWidget(
+        wrap(
+          PaperBookDetailScreen(
+            bookId: book.id,
+            getBooks: () async => booksOf(book),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.byType(BrrkReaderPage), findsOneWidget);
+      expect(find.byType(AcademicSelectableText), findsOneWidget);
+      final academic = tester.widget<AcademicSelectableText>(
+        find.byType(AcademicSelectableText),
+      );
+      expect(academic.spec.displayText.contains('\u00AD'), isTrue);
+    });
+
+    testWidgets('unsupported Paper Markdown uses shared fallback', (
+      tester,
+    ) async {
+      final book = makeBook(
+        pages: [
+          PaperPage(
+            id: 'page-1',
+            imagePath: 'images/book-1/page-1.jpg',
+            ocrHash: 'sha256:abc',
+            markdown: 'This has *emphasis*.',
+            notes: const [],
+          ),
+        ],
+      );
+      await tester.pumpWidget(
+        wrap(
+          PaperBookDetailScreen(
+            bookId: book.id,
+            getBooks: () async => booksOf(book),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.byType(BrrkReaderPage), findsOneWidget);
+      expect(find.byType(MarkdownBody), findsOneWidget);
+      expect(find.byType(AcademicSelectableText), findsNothing);
     });
 
     testWidgets('shows edit indicator on chip when page has manual edit', (

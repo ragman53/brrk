@@ -4,6 +4,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:brrk/src/app/pdf_viewer_screen.dart';
+import 'package:brrk/src/app/reader/brrk_reader_page.dart';
+import 'package:brrk/src/app/reader/hyphenation/academic_selectable_text.dart';
+import 'package:brrk/src/app/reading_appearance.dart';
 import 'package:brrk/src/rust/api/models.dart';
 
 void main() {
@@ -103,7 +106,9 @@ void main() {
       expect(find.textContaining('Original OCR paragraph.'), findsOneWidget);
     });
 
-    testWidgets('uses natural Markdown body text alignment', (tester) async {
+    testWidgets('uses shared reader page for natural native body text', (
+      tester,
+    ) async {
       const ocrMarkdown = '<!-- page: 1 -->\n# Page\n\nSome body text.';
       await tester.pumpWidget(
         ProviderScope(
@@ -119,8 +124,91 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      final markdown = tester.widget<Markdown>(find.byType(Markdown));
-      expect(markdown.styleSheet?.textAlign, isNot(WrapAlignment.spaceBetween));
+      expect(find.byType(BrrkReaderPage), findsOneWidget);
+      expect(find.byType(MarkdownBody), findsNothing);
+      final readerText = tester
+          .widgetList<SelectableText>(find.byType(SelectableText))
+          .last;
+      expect(readerText.textAlign, TextAlign.start);
+    });
+
+    testWidgets('native Academic PDF page uses shared Academic paragraph', (
+      tester,
+    ) async {
+      const ocrMarkdown = '<!-- page: 1 -->\nA philosophical investigation.';
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            readingAppearanceProvider.overrideWith((ref) {
+              final notifier = ReadingAppearanceNotifier();
+              notifier.setLayoutMode(ReaderLayoutMode.academic);
+              return notifier;
+            }),
+          ],
+          child: MaterialApp(
+            home: PdfViewerScreen(
+              doc: doc,
+              getPdfMarkdownOverride: (_) async => ocrMarkdown,
+              getPdfManualMarkdownOverride: (_) async =>
+                  PdfManualMarkdownData(version: 1, pages: const {}),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.byType(BrrkReaderPage), findsOneWidget);
+      expect(find.byType(AcademicSelectableText), findsOneWidget);
+      final academic = tester.widget<AcademicSelectableText>(
+        find.byType(AcademicSelectableText),
+      );
+      expect(academic.spec.displayText.contains('\u00AD'), isTrue);
+    });
+
+    testWidgets('unsupported PDF Markdown uses shared fallback', (
+      tester,
+    ) async {
+      const ocrMarkdown =
+          '<!-- page: 1 -->\nThis has [a link](https://example.com).';
+      await tester.pumpWidget(
+        ProviderScope(
+          child: MaterialApp(
+            home: PdfViewerScreen(
+              doc: doc,
+              getPdfMarkdownOverride: (_) async => ocrMarkdown,
+              getPdfManualMarkdownOverride: (_) async =>
+                  PdfManualMarkdownData(version: 1, pages: const {}),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.byType(BrrkReaderPage), findsOneWidget);
+      expect(find.byType(MarkdownBody), findsOneWidget);
+      expect(find.byType(AcademicSelectableText), findsNothing);
+    });
+
+    testWidgets('TOC button remains available for PDF headings', (
+      tester,
+    ) async {
+      const ocrMarkdown = '<!-- page: 1 -->\n# Chapter\n\nBody.';
+      await tester.pumpWidget(
+        ProviderScope(
+          child: MaterialApp(
+            home: PdfViewerScreen(
+              doc: doc,
+              getPdfMarkdownOverride: (_) async => ocrMarkdown,
+              getPdfManualMarkdownOverride: (_) async =>
+                  PdfManualMarkdownData(version: 1, pages: const {}),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.byIcon(Icons.list), findsOneWidget);
+      expect(find.byType(BrrkReaderPage), findsOneWidget);
     });
 
     testWidgets(

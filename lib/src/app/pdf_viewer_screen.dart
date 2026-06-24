@@ -1,9 +1,9 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:brrk/src/app/reading_appearance.dart';
-import 'package:brrk/src/app/reader/reader_surface.dart';
+import 'package:brrk/src/app/reader/brrk_reader_page.dart';
+import 'package:brrk/src/app/reader/reader_selection.dart';
 import 'package:brrk/src/app/home_providers.dart';
 import 'package:brrk/src/app/markdown_editor.dart';
 import 'package:brrk/src/app/note_draft.dart';
@@ -408,6 +408,45 @@ class _PdfViewerScreenState extends ConsumerState<PdfViewerScreen> {
     await lookup;
   }
 
+  void _handleReaderSelection(ReaderSelection? event) {
+    if (event == null) {
+      if (_selectedText != null ||
+          _selectedContext != null ||
+          _selectionStart != null ||
+          _selectionEnd != null ||
+          _lookupText != null) {
+        setState(() {
+          _selectedText = null;
+          _selectedContext = null;
+          _selectionStart = null;
+          _selectionEnd = null;
+          _lookupText = null;
+          _lookupStart = null;
+          _lookupEnd = null;
+        });
+      }
+      return;
+    }
+    final contextText = event.canonicalContext;
+    final start = event.selection.start.clamp(0, contextText.length);
+    final end = event.selection.end.clamp(0, contextText.length);
+    if (end <= start) return;
+    final candidate = vocabularyCandidateFromSelection(
+      context: contextText,
+      selection: TextSelection(baseOffset: start, extentOffset: end),
+      cause: event.cause,
+    );
+    setState(() {
+      _selectedText = contextText.substring(start, end).trim();
+      _selectedContext = contextText;
+      _selectionStart = start;
+      _selectionEnd = end;
+      _lookupText = candidate?.text;
+      _lookupStart = candidate?.start;
+      _lookupEnd = candidate?.end;
+    });
+  }
+
   Future<void> _saveLastReadPageImmediate() async {
     final updatedDoc = PdfDoc(
       id: widget.doc.id,
@@ -583,59 +622,10 @@ class _PdfViewerScreenState extends ConsumerState<PdfViewerScreen> {
               Positioned.fill(
                 child: Container(
                   color: appearance.palette.background,
-                  child: ReaderSurface(
-                    child: Markdown(
-                      padding: EdgeInsets.symmetric(
-                        vertical: appearance.density.paragraphSpacing + 4,
-                      ),
-                      data: _currentPageContent,
-                      selectable: true,
-                      onSelectionChanged: (text, sel, cause) {
-                        final str = text ?? '';
-                        if (sel.isValid && !sel.isCollapsed) {
-                          final start = sel.start.clamp(0, str.length);
-                          final end = sel.end.clamp(0, str.length);
-                          final candidate = vocabularyCandidateFromSelection(
-                            context: str,
-                            selection: sel,
-                            cause: cause,
-                          );
-                          setState(() {
-                            _selectedText = str.substring(start, end).trim();
-                            _selectedContext = str;
-                            _selectionStart = start;
-                            _selectionEnd = end;
-                            _lookupText = candidate?.text;
-                            _lookupStart = candidate?.start;
-                            _lookupEnd = candidate?.end;
-                          });
-                        } else {
-                          if (_selectedText != null) {
-                            setState(() {
-                              _selectedText = null;
-                              _selectedContext = null;
-                              _selectionStart = null;
-                              _selectionEnd = null;
-                              _lookupText = null;
-                              _lookupStart = null;
-                              _lookupEnd = null;
-                            });
-                          }
-                        }
-                      },
-                      styleSheet: MarkdownStyleSheet(
-                        h1: appearance.heading1Style(),
-                        h2: appearance.heading2Style(),
-                        h3: appearance.heading3Style(),
-                        p: appearance.paragraphStyle(),
-                        blockSpacing: appearance.density.paragraphSpacing,
-                        horizontalRuleDecoration: BoxDecoration(
-                          border: Border(
-                            top: BorderSide(color: appearance.palette.muted),
-                          ),
-                        ),
-                      ),
-                    ),
+                  child: BrrkReaderPage(
+                    markdown: _currentPageContent,
+                    appearance: appearance,
+                    onSelectionChanged: _handleReaderSelection,
                   ),
                 ),
               ),
