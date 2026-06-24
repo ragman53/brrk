@@ -9,7 +9,7 @@
 // device is FEAT-SPEC §16 stop-condition territory and is validated
 // by the real-device overlay gate.
 
-import 'dart:ui' show Locale, PictureRecorder, Canvas, Size;
+import 'dart:ui' show Locale, PictureRecorder, Canvas, Size, TextBaseline;
 
 import 'package:brrk/src/app/reader/hyphenation/reader_text_layout_spec.dart';
 import 'package:brrk/src/app/reader/hyphenation/visible_hyphen_painter.dart';
@@ -21,6 +21,7 @@ import 'package:flutter/painting.dart'
         TextSpan,
         TextStyle,
         TextWidthBasis;
+import 'package:flutter/rendering.dart' show TextPosition;
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
@@ -329,6 +330,93 @@ void main() {
         layoutWidth: 60,
       );
       expect(painter.computePlacements(), isEmpty);
+    });
+  });
+
+  group('VisibleHyphenPainter baseline alignment', () {
+    test('placement uses alphabetic baseline, not TextBox.top', () {
+      const layoutWidth = 55.0;
+      const rightPaintOverflow = 16.0;
+      final currentSpec = spec(displayText: 'acc\u00ADelerated');
+      final painter = VisibleHyphenPainter(
+        spec: currentSpec,
+        layoutWidth: layoutWidth,
+        rightPaintOverflow: rightPaintOverflow,
+      );
+
+      final placements = painter.computePlacements();
+      expect(placements, isNotEmpty);
+
+      final probe = painter.buildProbePainter(width: layoutWidth);
+      final lineMetrics = probe.computeLineMetrics();
+      expect(lineMetrics, isNotEmpty);
+
+      // Build hyphen painter and measure its ascent — it must match the
+      // same spec so the baseline alignment is correct.
+      final hyphenPainter = TextPainter(
+        text: TextSpan(
+          text: VisibleHyphenPainter.decorativeHyphen,
+          style: currentSpec.resolvedTextStyle,
+        ),
+        textDirection: currentSpec.textDirection,
+        textScaler: currentSpec.resolvedTextScaler,
+        locale: currentSpec.locale,
+        textHeightBehavior: currentSpec.textHeightBehavior,
+      )..layout();
+      final hyphenAscent = hyphenPainter.computeDistanceToActualBaseline(
+        TextBaseline.alphabetic,
+      );
+
+      for (final placement in placements) {
+        // Compute the expected y from the alphabetic baseline of the
+        // text line.
+        final lineBoundary = probe.getLineBoundary(
+          TextPosition(offset: placement.shyOffset - 1),
+        );
+        final lineStarts = <int>[];
+        var checkOffset = 0;
+        for (var i = 0; i < lineMetrics.length; i++) {
+          final boundary = probe.getLineBoundary(
+            TextPosition(offset: checkOffset),
+          );
+          lineStarts.add(boundary.start);
+          checkOffset = boundary.end.clamp(0, probe.text!.toPlainText().length);
+        }
+        final lineIdx = lineStarts.indexOf(lineBoundary.start);
+        expect(lineIdx, greaterThanOrEqualTo(0));
+        var lineTop = 0.0;
+        for (var i = 0; i < lineIdx; i++) {
+          lineTop += lineMetrics[i].height;
+        }
+        final expectedY =
+            lineTop + lineMetrics[lineIdx].baseline - hyphenAscent;
+
+        expect(placement.y, closeTo(expectedY, 1.0));
+      }
+    });
+
+    test('TextStyle and TextScaler match between surfaces', () {
+      const layoutWidth = 55.0;
+      final currentSpec = spec(displayText: 'acc\u00ADelerated');
+      final painter = VisibleHyphenPainter(
+        spec: currentSpec,
+        layoutWidth: layoutWidth,
+        rightPaintOverflow: 16,
+      );
+
+      final probe = painter.buildProbePainter(width: layoutWidth);
+
+      // The probe text style must share the same font, size, weight,
+      // and scaler as the spec.
+      expect(
+        probe.text!.style!.fontFamily,
+        currentSpec.resolvedTextStyle.fontFamily,
+      );
+      expect(
+        probe.text!.style!.fontSize,
+        currentSpec.resolvedTextStyle.fontSize,
+      );
+      expect(probe.textScaler, currentSpec.resolvedTextScaler);
     });
   });
 }

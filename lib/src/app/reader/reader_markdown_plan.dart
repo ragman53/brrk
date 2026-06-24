@@ -54,13 +54,18 @@ final class ReaderHeadingBlock extends ReaderBlock {
 final class ReaderParagraphBlock extends ReaderBlock {
   const ReaderParagraphBlock({
     required this.text,
-    required this.sourceStart,
-    required this.sourceEnd,
+    this.sourceStart,
+    this.sourceEnd,
   });
 
   final String text;
-  final int sourceStart;
-  final int sourceEnd;
+
+  /// Page-source code-unit start offset, or null for multi-line paragraphs
+  /// whose exact offsets cannot be proven across source-newline joins.
+  final int? sourceStart;
+
+  /// Page-source code-unit end offset.
+  final int? sourceEnd;
 }
 
 final class ReaderHorizontalRuleBlock extends ReaderBlock {
@@ -82,7 +87,26 @@ ReaderMarkdownPlan planReaderMarkdown(String markdown) {
   if (markdown.isEmpty) return const NativeReaderPlan(<ReaderBlock>[]);
 
   final blocks = <ReaderBlock>[];
-  var previousWasTextWithoutBlank = false;
+  var previousWasNonBlank = false;
+  final proseBuffer = <_SourceLine>[];
+
+  void flushProseBuffer() {
+    if (proseBuffer.isEmpty) return;
+    if (proseBuffer.length == 1) {
+      final line = proseBuffer.single;
+      blocks.add(
+        ReaderParagraphBlock(
+          text: line.text,
+          sourceStart: line.startOffset,
+          sourceEnd: line.startOffset + line.text.length,
+        ),
+      );
+    } else {
+      final visible = proseBuffer.map((l) => l.text).join(' ');
+      blocks.add(ReaderParagraphBlock(text: visible));
+    }
+    proseBuffer.clear();
+  }
 
   for (final line in _sourceLines(markdown)) {
     final raw = line.text;
@@ -94,7 +118,8 @@ ReaderMarkdownPlan planReaderMarkdown(String markdown) {
     }
 
     if (trimmed.isEmpty) {
-      previousWasTextWithoutBlank = false;
+      flushProseBuffer();
+      previousWasNonBlank = false;
       continue;
     }
 
@@ -103,21 +128,24 @@ ReaderMarkdownPlan planReaderMarkdown(String markdown) {
     }
 
     if (_isIgnorableHtmlComment(trimmed)) {
-      previousWasTextWithoutBlank = false;
+      flushProseBuffer();
+      previousWasNonBlank = false;
       continue;
     }
 
     if (_isHorizontalRule(trimmed)) {
-      if (previousWasTextWithoutBlank) {
+      if (previousWasNonBlank) {
         return const LegacyMarkdownPlan('possible setext heading');
       }
+      flushProseBuffer();
       blocks.add(const ReaderHorizontalRuleBlock());
-      previousWasTextWithoutBlank = false;
+      previousWasNonBlank = false;
       continue;
     }
 
     final heading = _headingMatch(trimmed);
     if (heading != null) {
+      flushProseBuffer();
       final marker = heading.group(1)!;
       final body = heading.group(2)!;
       if (body.trimRight().endsWith('#')) {
@@ -135,7 +163,7 @@ ReaderMarkdownPlan planReaderMarkdown(String markdown) {
           sourceEnd: start + body.length,
         ),
       );
-      previousWasTextWithoutBlank = true;
+      previousWasNonBlank = true;
       continue;
     }
     if (trimmed.startsWith('#')) {
@@ -148,22 +176,12 @@ ReaderMarkdownPlan planReaderMarkdown(String markdown) {
     if (_containsUnsupportedInline(trimmed)) {
       return const LegacyMarkdownPlan('unsupported inline syntax');
     }
-    if (previousWasTextWithoutBlank) {
-      // Multiline plain paragraph: require newline normalization that we
-      // refuse to invent (FEAT-SPEC §7.2 / §7.3).
-      return const LegacyMarkdownPlan('multiline paragraph');
-    }
 
-    blocks.add(
-      ReaderParagraphBlock(
-        text: raw,
-        sourceStart: line.startOffset,
-        sourceEnd: line.startOffset + raw.length,
-      ),
-    );
-    previousWasTextWithoutBlank = true;
+    proseBuffer.add(line);
+    previousWasNonBlank = true;
   }
 
+  flushProseBuffer();
   return NativeReaderPlan(blocks);
 }
 

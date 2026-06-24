@@ -49,6 +49,18 @@ class BrrkReaderPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final resolvedPlan = plan;
+
+    assert(() {
+      if (resolvedPlan is LegacyMarkdownPlan) {
+        debugPrint(
+          'BrrkReaderPage strategy=legacyMarkdown '
+          'reason=${resolvedPlan.reason}',
+        );
+      } else {
+        debugPrint('BrrkReaderPage strategy=nativeProse');
+      }
+      return true;
+    }());
     final Widget body = switch (resolvedPlan) {
       NativeReaderPlan(:final blocks) => _NativeReaderBody(
         blocks: blocks,
@@ -109,9 +121,11 @@ class _NativeReaderBody extends StatelessWidget {
   }
 
   Widget _buildBlock(ReaderBlock block) {
+    final blockIndex = blocks.indexOf(block);
     return switch (block) {
       ReaderParagraphBlock(:final text, :final sourceStart) =>
         BrrkReaderParagraph(
+          key: Key('brrk-paragraph-$blockIndex'),
           text: text,
           sourceStart: sourceStart,
           appearance: appearance,
@@ -119,6 +133,7 @@ class _NativeReaderBody extends StatelessWidget {
         ),
       ReaderHeadingBlock(:final level, :final text, :final sourceStart) =>
         _ReaderHeading(
+          key: Key('brrk-heading-$blockIndex'),
           level: level,
           text: text,
           sourceStart: sourceStart,
@@ -126,6 +141,7 @@ class _NativeReaderBody extends StatelessWidget {
           onSelectionChanged: onSelectionChanged,
         ),
       ReaderHorizontalRuleBlock() => Divider(
+        key: Key('brrk-rule-$blockIndex'),
         height: 1,
         thickness: 1,
         color: appearance.palette.muted,
@@ -136,6 +152,7 @@ class _NativeReaderBody extends StatelessWidget {
 
 class _ReaderHeading extends StatelessWidget {
   const _ReaderHeading({
+    super.key,
     required this.level,
     required this.text,
     required this.sourceStart,
@@ -162,7 +179,6 @@ class _ReaderHeading extends StatelessWidget {
   Widget build(BuildContext context) {
     return SelectableText(
       text,
-      key: Key('brrk-reader-heading-$level'),
       textAlign: TextAlign.start,
       style: _style,
       onSelectionChanged: (selection, cause) {

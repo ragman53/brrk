@@ -211,6 +211,47 @@ void main() {
       expect(find.byType(BrrkReaderPage), findsOneWidget);
     });
 
+    testWidgets('realistic multiline OCR PDF uses native Academic path', (
+      tester,
+    ) async {
+      const ocrMarkdown =
+          '<!-- page: 1 -->\n'
+          'This is an OCR text line\n'
+          'continued on the next visual line\n'
+          'and a philosophical investigation continues.';
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            readingAppearanceProvider.overrideWith((ref) {
+              final notifier = ReadingAppearanceNotifier();
+              notifier.setLayoutMode(ReaderLayoutMode.academic);
+              return notifier;
+            }),
+          ],
+          child: MaterialApp(
+            home: PdfViewerScreen(
+              doc: doc,
+              getPdfMarkdownOverride: (_) async => ocrMarkdown,
+              getPdfManualMarkdownOverride: (_) async =>
+                  PdfManualMarkdownData(version: 1, pages: const {}),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.byType(BrrkReaderPage), findsOneWidget);
+      // Multiline plain OCR should select native prose, not legacy fallback.
+      expect(find.byType(AcademicSelectableText), findsOneWidget);
+      final academic = tester.widget<AcademicSelectableText>(
+        find.byType(AcademicSelectableText),
+      );
+      expect(academic.spec.displayText.contains('\u00AD'), isTrue);
+      expect(academic.spec.displayText.contains('philosophical'), isFalse);
+      expect(academic.sourceText, contains('philosophical'));
+      expect(find.byType(MarkdownBody), findsNothing);
+    });
+
     testWidgets(
       'page indicator shows edit icon when current page has override',
       (tester) async {

@@ -204,31 +204,43 @@ class VisibleHyphenPainter extends CustomPainter {
     return Offset(box.right, box.top);
   }
 
-  /// Fallback (FEAT-SPEC §10.6): upstream caret position at the
-  /// marker. Returns `null` if it is not finite.
-  Offset? _upstreamCaret(TextPainter probe, int shyOffset) {
-    final caret = probe.getOffsetForCaret(
-      TextPosition(offset: shyOffset, affinity: TextAffinity.upstream),
-      Rect.zero,
+  /// Returns the alphabetic baseline y for the visual line that
+  /// contains [shyOffset] in [probe], or `null` if line metrics are
+  /// unavailable.
+  double? _lineBaseline(TextPainter probe, int shyOffset) {
+    final lineBoundary = probe.getLineBoundary(
+      TextPosition(offset: shyOffset - 1),
     );
-    if (!caret.dx.isFinite || !caret.dy.isFinite) return null;
-    return caret;
-  }
+    final lineStartOffset = lineBoundary.start;
 
-  /// Computes the (x, y) top-left offset at which to paint a
-  /// decorative hyphen for [shyOffset], or `null` if no stable
-  /// position exists.
-  Offset? _positionForMarker(TextPainter probe, int shyOffset) {
-    final trailingGlyph = _trailingGlyphBox(probe, shyOffset);
-    if (trailingGlyph != null) return trailingGlyph;
+    final lineMetrics = probe.computeLineMetrics();
+    if (lineMetrics.isEmpty) return null;
 
-    // The caret fallback is intentionally conservative. If the
-    // trailing glyph box is unavailable, we cannot prove that the
-    // fallback starts at or after the preceding fragment edge, so we
-    // omit this one decorative hyphen instead of shifting it left into
-    // the text.
-    _upstreamCaret(probe, shyOffset);
-    return null;
+    // Map line-boundary start offsets to line indices so we can look
+    // up the correct LineMetrics entry.
+    final lineStarts = <int>[];
+    var checkOffset = 0;
+    for (var i = 0; i < lineMetrics.length; i++) {
+      final boundary = probe.getLineBoundary(TextPosition(offset: checkOffset));
+      lineStarts.add(boundary.start);
+      checkOffset = boundary.end.clamp(
+        0,
+        math.min(probe.text!.toPlainText().length, boundary.end + 1),
+      );
+    }
+
+    final idx = lineStarts.indexOf(lineStartOffset);
+    if (idx < 0 || idx >= lineMetrics.length) return null;
+
+    // Cumulative height of preceding lines.
+    var lineTop = 0.0;
+    for (var i = 0; i < idx; i++) {
+      lineTop += lineMetrics[i].height;
+    }
+
+    // LineMetrics.baseline is the alphabetic baseline relative to the
+    // top of its own line.
+    return lineTop + lineMetrics[idx].baseline;
   }
 
   /// Builds a `TextPainter` for the single decorative hyphen glyph at
@@ -289,17 +301,26 @@ class VisibleHyphenPainter extends CustomPainter {
     final placements = <HyphenPlacement>[];
     for (final shy in _softHyphenOffsets()) {
       if (!_isConfirmedBreak(probe, shy)) continue;
-      final pos = _positionForMarker(probe, shy);
-      if (pos == null) continue;
-      final x = pos.dx + opticalGap;
-      if (!x.isFinite || !pos.dy.isFinite) continue;
+      final trailingGlyph = _trailingGlyphBox(probe, shy);
+      if (trailingGlyph == null || !trailingGlyph.dx.isFinite) continue;
+      final x = trailingGlyph.dx + opticalGap;
       if (x < 0) continue;
       if (x + hyphenStyleWidth > paintRightLimit) {
         // Fail safe: omit this decorative hyphen rather than overlap
         // the preceding glyph by shifting it left.
         continue;
       }
-      placements.add(HyphenPlacement(shyOffset: shy, x: x, y: pos.dy));
+
+      // Align the decorative hyphen-glyph's alphabetic baseline with
+      // the containing text line's alphabetic baseline so the hyphen
+      // reads as a horizontal bar, not a misplaced dot.
+      final baseline = _lineBaseline(probe, shy);
+      if (baseline == null) continue;
+      final hyphenAscent = _buildHyphenPainter()
+          .computeDistanceToActualBaseline(TextBaseline.alphabetic);
+      final y = baseline - hyphenAscent;
+      if (!y.isFinite) continue;
+      placements.add(HyphenPlacement(shyOffset: shy, x: x, y: y));
     }
     return placements;
   }

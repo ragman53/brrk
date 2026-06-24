@@ -170,7 +170,6 @@ class BrrkReaderParagraph extends StatelessWidget {
     if (!render.overlayEnabled) {
       return SelectableText(
         render.displayText,
-        key: const Key('brrk-reader-paragraph-selectable'),
         onSelectionChanged: handleSelection,
         textAlign: render.textAlign,
         style: render.style,
@@ -178,7 +177,6 @@ class BrrkReaderParagraph extends StatelessWidget {
     }
 
     return AcademicSelectableText(
-      key: const Key('brrk-reader-paragraph-academic'),
       spec: render.toReaderTextLayoutSpec()!,
       sourceText: render.sourceText,
       onSelectionChanged: handleSelection,
