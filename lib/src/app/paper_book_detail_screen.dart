@@ -15,6 +15,7 @@ import 'package:brrk/src/app/note_editor.dart';
 import 'package:brrk/src/app/markdown_editor.dart';
 import 'package:brrk/src/app/ocr_disclosure.dart';
 import 'package:brrk/src/app/paper_book/paper_book_export.dart';
+import 'package:brrk/src/app/paper_book/paper_book_notes.dart';
 import 'package:brrk/src/app/reading_appearance.dart';
 import 'package:brrk/src/app/reader/brrk_reader_page.dart';
 import 'package:brrk/src/app/reader/reader_selection.dart';
@@ -1059,7 +1060,7 @@ class _PageViewState extends State<_PageView> {
             runSpacing: 4,
             children: [
               ...visible.map(
-                (n) => _StickyNoteChip(
+                (n) => StickyNoteChip(
                   note: n,
                   appearance: appearance,
                   onTap: () => widget.onEditNote(n),
@@ -1108,43 +1109,6 @@ class _PageViewState extends State<_PageView> {
           ),
         ),
       ],
-    );
-  }
-}
-
-// ─── Sticky note chip ────────────────────────────────────────────────────────
-
-class _StickyNoteChip extends StatelessWidget {
-  final Note note;
-  final ReadingAppearance appearance;
-  final VoidCallback onTap;
-  final VoidCallback onDelete;
-
-  const _StickyNoteChip({
-    required this.note,
-    required this.appearance,
-    required this.onTap,
-    required this.onDelete,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return InputChip(
-      label: Text(
-        note.content,
-        maxLines: 2,
-        overflow: TextOverflow.ellipsis,
-        style: TextStyle(color: appearance.palette.foreground, fontSize: 12),
-      ),
-      onPressed: onTap,
-      deleteIcon: Icon(Icons.close, size: 16, color: appearance.palette.muted),
-      onDeleted: onDelete,
-      backgroundColor: Color.alphaBlend(
-        appearance.palette.accent.withValues(alpha: 0.18),
-        appearance.palette.background,
-      ),
-      side: BorderSide(color: appearance.palette.accent, width: 2),
-      padding: const EdgeInsets.symmetric(horizontal: 4),
     );
   }
 }
