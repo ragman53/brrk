@@ -14,6 +14,7 @@ import 'package:brrk/src/app/vocabulary/vocabulary_screen.dart';
 import 'package:brrk/src/app/note_editor.dart';
 import 'package:brrk/src/app/markdown_editor.dart';
 import 'package:brrk/src/app/ocr_disclosure.dart';
+import 'package:brrk/src/app/paper_book/paper_book_dialogs.dart';
 import 'package:brrk/src/app/paper_book/paper_book_export.dart';
 import 'package:brrk/src/app/paper_book/paper_book_notes.dart';
 import 'package:brrk/src/app/reading_appearance.dart';
@@ -203,38 +204,13 @@ class _PaperBookDetailScreenState extends ConsumerState<PaperBookDetailScreen> {
   }
 
   Future<void> _renameBook() async {
-    final controller = TextEditingController(text: _book!.title);
-    final title = await showDialog<String>(
-      context: context,
-      builder: (_) => AlertDialog(
-        title: const Text('Rename Book'),
-        content: TextField(
-          controller: controller,
-          autofocus: true,
-          decoration: const InputDecoration(labelText: 'Title'),
-          onSubmitted: (_) => Navigator.of(context).pop(controller.text.trim()),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.of(context).pop(controller.text.trim()),
-            child: const Text('Save'),
-          ),
-        ],
-      ),
+    final title = await showRenameBookDialog(
+      context,
+      initialTitle: _book!.title,
     );
-    if (!mounted) {
-      controller.dispose();
-      return;
-    }
+    if (!mounted) return;
     final trimmed = title?.trim() ?? '';
-    if (trimmed.isEmpty || trimmed == _book!.title) {
-      controller.dispose();
-      return;
-    }
+    if (trimmed.isEmpty || trimmed == _book!.title) return;
     try {
       final now = DateTime.now().toUtc().toIso8601String();
       final renamed = PaperBook(
@@ -255,32 +231,11 @@ class _PaperBookDetailScreenState extends ConsumerState<PaperBookDetailScreen> {
     } catch (e) {
       if (mounted) showOcrError(context, OcrUserError.storage());
     }
-    controller.dispose();
   }
 
   Future<void> _deleteBook() async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (_) => AlertDialog(
-        title: const Text('Delete Book?'),
-        content: const Text(
-          'This will permanently delete this book, all pages, images, and notes. '
-          'This action cannot be undone.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            style: FilledButton.styleFrom(backgroundColor: Colors.red),
-            onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('Delete'),
-          ),
-        ],
-      ),
-    );
-    if (confirmed != true || !mounted) return;
+    final confirmed = await confirmDeleteBook(context);
+    if (!confirmed || !mounted) return;
     try {
       await storage.deletePaperBook(bookId: _book!.id);
       if (!mounted) return;
@@ -347,28 +302,8 @@ class _PaperBookDetailScreenState extends ConsumerState<PaperBookDetailScreen> {
   }
 
   Future<void> _deletePage(PaperPage page, int index) async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (_) => AlertDialog(
-        title: const Text('Delete Page?'),
-        content: const Text(
-          'This will permanently delete this page, its image, and notes. '
-          'This action cannot be undone.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            style: FilledButton.styleFrom(backgroundColor: Colors.red),
-            onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('Delete'),
-          ),
-        ],
-      ),
-    );
-    if (confirmed != true || !mounted) return;
+    final confirmed = await confirmDeletePage(context);
+    if (!confirmed || !mounted) return;
     try {
       final now = DateTime.now().toUtc().toIso8601String();
       await storage.deletePaperPage(
@@ -384,43 +319,14 @@ class _PaperBookDetailScreenState extends ConsumerState<PaperBookDetailScreen> {
   }
 
   Future<void> _editPageLabel(PaperPage page, int index) async {
-    final controller = TextEditingController(text: page.pageLabel ?? '');
-    final label = await showDialog<String?>(
-      context: context,
-      builder: (_) => AlertDialog(
-        title: const Text('Edit Page Label'),
-        content: TextField(
-          controller: controller,
-          autofocus: true,
-          decoration: const InputDecoration(
-            labelText: 'Label',
-            hintText: 'e.g. 42 or xii',
-          ),
-          maxLength: 32,
-          onSubmitted: (_) => Navigator.of(context).pop(controller.text.trim()),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.of(context).pop(controller.text.trim()),
-            child: const Text('Save'),
-          ),
-        ],
-      ),
+    final label = await showEditPageLabelDialog(
+      context,
+      initialLabel: page.pageLabel,
     );
-    if (!mounted) {
-      controller.dispose();
-      return;
-    }
+    if (!mounted) return;
     final trimmed = label?.trim() ?? '';
     final newLabel = trimmed.isEmpty ? null : trimmed;
-    if (newLabel == page.pageLabel) {
-      controller.dispose();
-      return;
-    }
+    if (newLabel == page.pageLabel) return;
     final newPage = PaperPage(
       id: page.id,
       imagePath: page.imagePath,
@@ -443,7 +349,6 @@ class _PaperBookDetailScreenState extends ConsumerState<PaperBookDetailScreen> {
     } catch (e) {
       if (mounted) showOcrError(context, OcrUserError.storage());
     }
-    controller.dispose();
   }
 
   Future<void> _openMarkdownEditor(PaperPage page, int index) async {
