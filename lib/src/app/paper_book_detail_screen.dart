@@ -15,6 +15,7 @@ import 'package:brrk/src/app/note_editor.dart';
 import 'package:brrk/src/app/markdown_editor.dart';
 import 'package:brrk/src/app/ocr_disclosure.dart';
 import 'package:brrk/src/app/paper_book/paper_book_dialogs.dart';
+import 'package:brrk/src/app/paper_book/paper_book_empty_body.dart';
 import 'package:brrk/src/app/paper_book/paper_book_export.dart';
 import 'package:brrk/src/app/paper_book/paper_book_notes.dart';
 import 'package:brrk/src/app/reading_appearance.dart';
@@ -167,7 +168,7 @@ class _PaperBookDetailScreenState extends ConsumerState<PaperBookDetailScreen> {
         ],
       ),
       body: pages.isEmpty
-          ? _EmptyBookBody(onAddPage: _openCamera)
+          ? EmptyBookBody(onAddPage: _openCamera)
           : _PagesBody(
               book: _book!,
               readingAppearance: readingAppearance,
@@ -461,44 +462,6 @@ class _PaperBookDetailScreenState extends ConsumerState<PaperBookDetailScreen> {
     );
     await lookup;
     return true;
-  }
-}
-
-// ─── Empty book body ─────────────────────────────────────────────────────────
-
-class _EmptyBookBody extends StatelessWidget {
-  final VoidCallback onAddPage;
-  const _EmptyBookBody({required this.onAddPage});
-
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(32),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.menu_book, size: 64, color: Colors.grey.shade400),
-            const SizedBox(height: 16),
-            Text('No pages yet', style: Theme.of(context).textTheme.titleLarge),
-            const SizedBox(height: 8),
-            Text(
-              'Capture pages to add them to this book.',
-              textAlign: TextAlign.center,
-              style: Theme.of(
-                context,
-              ).textTheme.bodyMedium?.copyWith(color: Colors.grey.shade600),
-            ),
-            const SizedBox(height: 32),
-            FilledButton.icon(
-              onPressed: onAddPage,
-              icon: const Icon(Icons.add_a_photo),
-              label: const Text('Add Page'),
-            ),
-          ],
-        ),
-      ),
-    );
   }
 }
 
