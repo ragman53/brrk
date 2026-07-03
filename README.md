@@ -83,21 +83,6 @@ This is still beta software. Please keep backups of anything important.
 
 ---
 
-## Install the beta
-
-1. Open the latest GitHub Release: <https://github.com/ragman53/brrk/releases/tag/v0.1.0-beta.2>
-2. Download [`brrk-v0.1.0-beta.2-android.apk`](https://github.com/ragman53/brrk/releases/download/v0.1.0-beta.2/brrk-v0.1.0-beta.2-android.apk).
-3. Optionally verify the SHA-256 checksum using [`brrk-v0.1.0-beta.2-android.apk.sha256`](https://github.com/ragman53/brrk/releases/download/v0.1.0-beta.2/brrk-v0.1.0-beta.2-android.apk.sha256).
-4. Install the APK on Android.
-
-Current beta APK checksum:
-
-```text
-05c4a472f3f2a6bb6f996c18b71605b18fa223fbc9b28171428f6bbde15a752c  brrk-v0.1.0-beta.2-android.apk
-```
-
-Android may show a warning because this is installed outside the Play Store. You may need to allow installation from your browser or file manager.
-
 ### Requirements
 
 - Android 8.0 / API 26 or newer
