@@ -14,6 +14,7 @@ import 'package:brrk/src/app/vocabulary/vocabulary_screen.dart';
 import 'package:brrk/src/app/note_editor.dart';
 import 'package:brrk/src/app/markdown_editor.dart';
 import 'package:brrk/src/app/ocr_disclosure.dart';
+import 'package:brrk/src/app/paper_book/paper_book_actions.dart';
 import 'package:brrk/src/app/paper_book/paper_book_dialogs.dart';
 import 'package:brrk/src/app/paper_book/paper_book_empty_body.dart';
 import 'package:brrk/src/app/paper_book/paper_book_export.dart';
@@ -611,38 +612,6 @@ class _PagesBodyState extends State<_PagesBody> {
     }
   }
 
-  void _showPageActions(BuildContext context, PaperPage page, int index) {
-    showModalBottomSheet(
-      context: context,
-      builder: (_) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            ListTile(
-              leading: const Icon(Icons.label),
-              title: const Text('Edit Page Label'),
-              onTap: () {
-                Navigator.pop(context);
-                widget.onEditPageLabel(page, index);
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.delete, color: Colors.red),
-              title: const Text(
-                'Delete Page',
-                style: TextStyle(color: Colors.red),
-              ),
-              onTap: () {
-                Navigator.pop(context);
-                widget.onDeletePage(page, index);
-              },
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     final pages = widget.book.pages;
@@ -659,8 +628,13 @@ class _PagesBodyState extends State<_PagesBody> {
               return Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 3),
                 child: GestureDetector(
-                  onLongPress: () =>
-                      _showPageActions(context, pages[index], index),
+                  onLongPress: () => showPaperPageActions(
+                    context,
+                    page: pages[index],
+                    index: index,
+                    onEditPageLabel: widget.onEditPageLabel,
+                    onDeletePage: widget.onDeletePage,
+                  ),
                   child: ChoiceChip(
                     label: Row(
                       mainAxisSize: MainAxisSize.min,
