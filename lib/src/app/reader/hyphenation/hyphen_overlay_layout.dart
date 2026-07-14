@@ -16,6 +16,11 @@ import 'package:flutter/painting.dart';
 import 'reader_text_layout_spec.dart';
 import 'visible_hyphen_painter.dart';
 
+const double _minHyphenLength = 5.5;
+const double _maxHyphenLength = 12.0;
+const double _minHyphenStrokeWidth = 1.1;
+const double _maxHyphenStrokeWidth = 2.0;
+
 /// One decorative horizontal stroke placed at a confirmed line break.
 @immutable
 final class HyphenStroke {
@@ -130,10 +135,12 @@ class HyphenOverlayLayoutEngine {
     // Stroke geometry scaled from the body font size.
     final baseFontSize = spec.resolvedTextStyle.fontSize ?? 14.0;
     final scaledFontSize = spec.resolvedTextScaler.scale(baseFontSize);
-    final strokeLength =
-        (scaledFontSize * 0.34).clamp(5.0, 9.0).toDouble();
-    final strokeWidth =
-        (scaledFontSize * 0.065).clamp(1.0, 1.5).toDouble();
+    final strokeLength = (scaledFontSize * 0.34)
+        .clamp(_minHyphenLength, _maxHyphenLength)
+        .toDouble();
+    final strokeWidth = (scaledFontSize * 0.065)
+        .clamp(_minHyphenStrokeWidth, _maxHyphenStrokeWidth)
+        .toDouble();
     final opticalGap = (scaledFontSize * 0.04).clamp(0.25, 1.0).toDouble();
 
     final paintRightLimit = layoutWidth + rightPaintOverflow;

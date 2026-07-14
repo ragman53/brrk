@@ -45,6 +45,35 @@ HyphenOverlayLayout compute({
   );
 }
 
+({HyphenStroke stroke, double length, double width}) _strokeMetricsFor(
+  double fontSize,
+) {
+  final layout = _engine.compute(
+    spec: ReaderTextLayoutSpec(
+      displayText: 'philo\u00ADsophical',
+      resolvedTextStyle: TextStyle(fontSize: fontSize),
+      textAlign: TextAlign.justify,
+      textDirection: TextDirection.ltr,
+      textWidthBasis: TextWidthBasis.parent,
+      locale: const Locale('en', 'US'),
+    ),
+    layoutWidth: 90,
+    rightPaintOverflow: 16,
+    cursorWidth: 2.0,
+  );
+  expect(
+    layout.strokes,
+    hasLength(1),
+    reason: 'expected exactly one stroke at fontSize=$fontSize',
+  );
+  final stroke = layout.strokes.single;
+  return (
+    stroke: stroke,
+    length: stroke.end.dx - stroke.start.dx,
+    width: layout.strokeWidth,
+  );
+}
+
 void main() {
   group('VisibleHyphenPainter (REVIEW.md §4)', () {
     test('draws no lines when layout is empty', () {
@@ -279,66 +308,42 @@ void main() {
       }
     });
 
-    test('stroke length policy: monotonic within clamps (REVIEW.md §5)', () {
-      double strokeWidthFor(double fontSize) {
-        final layout = _engine.compute(
-          spec: ReaderTextLayoutSpec(
-            displayText: 'philo\u00ADsophical',
-            resolvedTextStyle: TextStyle(fontSize: fontSize),
-            textAlign: TextAlign.justify,
-            textDirection: TextDirection.ltr,
-            textWidthBasis: TextWidthBasis.parent,
-            locale: const Locale('en', 'US'),
-          ),
-          layoutWidth: 60,
-          rightPaintOverflow: 16,
-          cursorWidth: 2.0,
-        );
-        return layout.strokeWidth;
-      }
+    test('REVIEW.md §3.2 — stroke length and width policy', () {
+      final s12 = _strokeMetricsFor(12);
+      final s17 = _strokeMetricsFor(17);
+      final s24 = _strokeMetricsFor(24);
+      final s32 = _strokeMetricsFor(32);
 
-      final s12 = strokeWidthFor(12);
-      final s17 = strokeWidthFor(17);
-      final s24 = strokeWidthFor(24);
-      final s32 = strokeWidthFor(32);
+      expect(s12.length, closeTo(5.5, 1e-6));
+      expect(s12.width, greaterThanOrEqualTo(1.1));
+      expect(s32.length, greaterThanOrEqualTo(10.5));
+      expect(s32.width, greaterThanOrEqualTo(1.9));
 
-      expect(s12, greaterThanOrEqualTo(1.0));
-      expect(s12, lessThanOrEqualTo(1.5));
-      expect(s32, greaterThanOrEqualTo(1.0));
-      expect(s32, lessThanOrEqualTo(1.5));
-      expect(s17, greaterThanOrEqualTo(s12));
-      expect(s24, greaterThanOrEqualTo(s17));
-      expect(s32, greaterThanOrEqualTo(s24));
+      expect(s17.length, greaterThanOrEqualTo(s12.length));
+      expect(s24.length, greaterThanOrEqualTo(s17.length));
+      expect(s32.length, greaterThanOrEqualTo(s24.length));
+      expect(s17.width, greaterThanOrEqualTo(s12.width));
+      expect(s24.width, greaterThanOrEqualTo(s17.width));
+      expect(s32.width, greaterThanOrEqualTo(s24.width));
+      expect(s32.length, greaterThan(s24.length));
+
+      expect(s17.length, closeTo(5.78, 1e-6));
+      expect(s17.width, closeTo(1.105, 1e-6));
     });
 
-    test('REVIEW.md §5 — stroke geometry at all supported font sizes', () {
-      // Verify the layout produces a stroke with start/end on the same
-      // y, with non-zero length and the x begins after the glyph.
+    test('REVIEW.md §3.2 — stroke geometry at all supported font sizes', () {
       for (final fontSize in [12.0, 17.0, 24.0, 32.0]) {
-        final layout = _engine.compute(
-          spec: ReaderTextLayoutSpec(
-            displayText: 'philo\u00ADsophical',
-            resolvedTextStyle: TextStyle(fontSize: fontSize),
-            textAlign: TextAlign.justify,
-            textDirection: TextDirection.ltr,
-            textWidthBasis: TextWidthBasis.parent,
-            locale: const Locale('en', 'US'),
-          ),
-          // Width large enough that the soft-hyphen break is forced.
-          layoutWidth: 90,
-          rightPaintOverflow: 16,
-          cursorWidth: 2.0,
-        );
-        expect(layout.isNotEmpty, isTrue,
-            reason: 'no stroke at fontSize=$fontSize');
-        final s = layout.strokes.single;
-        // Stroke is horizontal.
-        expect(s.start.dy, equals(s.end.dy));
-        // Stroke has visible length.
-        expect(s.end.dx - s.start.dx, greaterThan(0));
-        // Stroke width is clamped to [1, 1.5].
-        expect(layout.strokeWidth, greaterThanOrEqualTo(1.0));
-        expect(layout.strokeWidth, lessThanOrEqualTo(1.5));
+        final metrics = _strokeMetricsFor(fontSize);
+        expect(metrics.stroke.start.dy, equals(metrics.stroke.end.dy),
+            reason: 'stroke must be horizontal at fontSize=$fontSize');
+        expect(metrics.length.isFinite, isTrue,
+            reason: 'length must be finite at fontSize=$fontSize');
+        expect(metrics.width.isFinite, isTrue,
+            reason: 'width must be finite at fontSize=$fontSize');
+        expect(metrics.length, greaterThan(0),
+            reason: 'length must be positive at fontSize=$fontSize');
+        expect(metrics.width, greaterThan(0),
+            reason: 'width must be positive at fontSize=$fontSize');
       }
     });
   });
