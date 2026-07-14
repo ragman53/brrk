@@ -1,13 +1,22 @@
-# Private docs / planning
-*.md
-!README.md
+# Development documentation is shared for co-development.
+# Do not commit secrets or private user content to Markdown files.
 
-# Local agent/runtime artifacts
-/.pi/
-/subagent-artifacts/
+# Local agent/runtime artifacts (Markdown instructions/reports are shared).
+/.pi/*
+!/.pi/
+!/.pi/**/
+!/.pi/**/*.md
+/subagent-artifacts/*
+!/subagent-artifacts/
+!/subagent-artifacts/**/
+!/subagent-artifacts/**/*.md
 
-# Release artifacts
-/release-artifacts/
+# Release artifacts (release manifests/checksums are shared; binaries stay local).
+/release-artifacts/*
+!/release-artifacts/
+!/release-artifacts/**/
+!/release-artifacts/**/*.md
+!/release-artifacts/**/*SHA256SUMS.txt
 *.apk
 *.aab
 *.apks

@@ -1,0 +1,1 @@
+I now have enough verified evidence (spec, reader code, vocab service code, flutter_markdown textAlign API, pubspec, current tests, layout constraints) to write the plan.
