@@ -326,10 +326,11 @@ packages:
   flutter_markdown:
     dependency: "direct main"
     description:
-      name: flutter_markdown
-      sha256: "08fb8315236099ff8e90cb87bb2b935e0a724a3af1623000a9cec930468e0f27"
-      url: "https://pub.dev"
-    source: hosted
+      path: "packages/flutter_markdown"
+      ref: f701530f888052777e5bb3ef88f6781174f0f10f
+      resolved-ref: f701530f888052777e5bb3ef88f6781174f0f10f
+      url: "https://github.com/ragman53/packages.git"
+    source: git
     version: "0.7.7+1"
   flutter_plugin_android_lifecycle:
     dependency: transitive

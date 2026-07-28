@@ -7,6 +7,8 @@ import 'reader_paragraph_layout.dart';
 import 'reader_selection.dart';
 import 'reader_surface.dart';
 
+typedef ReaderMarkdownPlanner = ReaderMarkdownPlan Function(String markdown);
+
 /// Shared page renderer for Paper and PDF.
 ///
 /// Owns the renderer strategy choice (FEAT-SPEC §3.1, §8). Screens pass
@@ -21,6 +23,8 @@ class BrrkReaderPage extends StatefulWidget {
     required this.onSelectionChanged,
     this.planOverride,
     this.scrollController,
+    this.planner = planReaderMarkdown,
+    this.onBuild,
   });
 
   /// Canonical page Markdown (manual override if present).
@@ -40,22 +44,47 @@ class BrrkReaderPage extends StatefulWidget {
   /// to keep PDF from inheriting `flutter_markdown`'s scroll ownership.
   final ScrollController? scrollController;
 
+  /// Test seam for deterministic planner call-count assertions.
+  @visibleForTesting
+  final ReaderMarkdownPlanner planner;
+
+  /// Test seam for reader subtree build-count assertions.
+  @visibleForTesting
+  final VoidCallback? onBuild;
+
   @override
   State<BrrkReaderPage> createState() => _BrrkReaderPageState();
 }
 
 class _BrrkReaderPageState extends State<BrrkReaderPage> {
   String? _lastDiagnosticKey;
+  late ReaderMarkdownPlan _resolvedPlan;
 
-  ReaderMarkdownPlan get _plan =>
-      widget.planOverride ?? planReaderMarkdown(widget.markdown);
+  ReaderMarkdownPlan _resolvePlan() =>
+      widget.planOverride ?? widget.planner(widget.markdown);
+
+  @override
+  void initState() {
+    super.initState();
+    _resolvedPlan = _resolvePlan();
+  }
+
+  @override
+  void didUpdateWidget(covariant BrrkReaderPage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.markdown != widget.markdown ||
+        oldWidget.planOverride != widget.planOverride) {
+      _resolvedPlan = _resolvePlan();
+    }
+  }
 
   /// Convenience: the strategy chosen for [widget.markdown].
-  ReaderRenderStrategy get strategy => _plan.strategy;
+  ReaderRenderStrategy get strategy => _resolvedPlan.strategy;
 
   @override
   Widget build(BuildContext context) {
-    final resolvedPlan = _plan;
+    widget.onBuild?.call();
+    final resolvedPlan = _resolvedPlan;
 
     // REVIEW.md §9: log only when the resolved strategy/reason key
     // changes from a stateful diagnostic seam. The planner returns a

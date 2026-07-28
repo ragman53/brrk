@@ -1,4 +1,6 @@
+import 'package:brrk/src/app/reader/emergency_word_breaker.dart';
 import 'package:brrk/src/app/reader/hyphenation/academic_selectable_text.dart';
+import 'package:brrk/src/app/reader/hyphenation/hyphenated_text.dart';
 import 'package:brrk/src/app/reader/reader_paragraph_layout.dart';
 import 'package:brrk/src/app/reading_appearance.dart';
 import 'package:flutter/material.dart';
@@ -139,6 +141,89 @@ void main() {
       expect(overlay.spec.displayText.contains('\u00AD'), isTrue);
     });
 
+    testWidgets('caches text preparation across presentation rebuilds', (
+      tester,
+    ) async {
+      final breaker = _CountingBreaker();
+      final layout = ReaderParagraphLayout(breaker: breaker);
+
+      Widget paragraph({
+        required String text,
+        required ReadingAppearance appearance,
+        double width = 300,
+      }) {
+        return MaterialApp(
+          home: Scaffold(
+            body: SizedBox(
+              width: width,
+              child: BrrkReaderParagraph(
+                text: text,
+                appearance: appearance,
+                layout: layout,
+                onSelectionChanged: (_) {},
+              ),
+            ),
+          ),
+        );
+      }
+
+      await tester.pumpWidget(
+        paragraph(text: 'philosophical', appearance: academic),
+      );
+      expect(breaker.calls, 1);
+
+      await tester.pumpWidget(
+        paragraph(
+          text: 'philosophical',
+          appearance: const ReadingAppearance(
+            fontSize: 24,
+            density: ReadingDensity.spacious,
+            palette: ReadingPalette.nord,
+            layoutMode: ReaderLayoutMode.academic,
+          ),
+          width: 200,
+        ),
+      );
+      expect(
+        breaker.calls,
+        1,
+        reason: 'appearance and width do not change break opportunities',
+      );
+
+      await tester.pumpWidget(
+        paragraph(text: 'investigation', appearance: academic),
+      );
+      expect(breaker.calls, 2);
+
+      await tester.pumpWidget(
+        paragraph(text: 'investigation', appearance: natural),
+      );
+      expect(breaker.calls, 2, reason: 'Natural never invokes the breaker');
+
+      await tester.pumpWidget(
+        paragraph(text: 'investigation', appearance: academic),
+      );
+      expect(breaker.calls, 3);
+    });
+
+    testWidgets('Natural mode never invokes the breaker', (tester) async {
+      final breaker = _CountingBreaker();
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: BrrkReaderParagraph(
+              text: 'philosophical',
+              appearance: natural,
+              layout: ReaderParagraphLayout(breaker: breaker),
+              onSelectionChanged: (_) {},
+            ),
+          ),
+        ),
+      );
+
+      expect(breaker.calls, 0);
+    });
+
     testWidgets('collapsed selection emits null and never U+00AD', (
       tester,
     ) async {
@@ -164,4 +249,14 @@ void main() {
       expect(last, isNull);
     });
   });
+}
+
+class _CountingBreaker extends EmergencyWordBreaker {
+  int calls = 0;
+
+  @override
+  HyphenatedText breakText(String source) {
+    calls++;
+    return super.breakText(source);
+  }
 }

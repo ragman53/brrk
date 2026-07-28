@@ -120,7 +120,8 @@ class ReadingAppearanceControls extends ConsumerWidget {
             min: 12,
             max: 32,
             divisions: 20,
-            onChanged: (v) => notifier.setFontSize(v),
+            onChanged: notifier.previewFontSize,
+            onChangeEnd: notifier.persistFontSize,
           ),
           const SizedBox(height: 16),
 
@@ -335,14 +336,30 @@ class ReadingAppearanceNotifier extends StateNotifier<ReadingAppearance> {
     );
   }
 
-  Future<void> setFontSize(double size) async {
-    final clamped = size.clamp(
-      ReadingAppearance.minFontSize,
-      ReadingAppearance.maxFontSize,
-    );
+  double _clampFontSize(double size) =>
+      size.clamp(ReadingAppearance.minFontSize, ReadingAppearance.maxFontSize);
+
+  /// Updates the in-memory preview without performing persistence I/O.
+  void previewFontSize(double size) {
+    final clamped = _clampFontSize(size);
+    if (state.fontSize == clamped) return;
     state = state.copyWith(fontSize: clamped);
+  }
+
+  /// Persists the final slider value once when the drag completes.
+  Future<void> persistFontSize(double size) async {
+    final clamped = _clampFontSize(size);
+    if (state.fontSize != clamped) {
+      state = state.copyWith(fontSize: clamped);
+    }
     final prefs = await SharedPreferences.getInstance();
     await prefs.setDouble(_fontSizeKey, clamped);
+  }
+
+  /// Programmatic update that preserves the existing update-and-save contract.
+  Future<void> setFontSize(double size) async {
+    previewFontSize(size);
+    await persistFontSize(size);
   }
 
   Future<void> setDensity(ReadingDensity density) async {

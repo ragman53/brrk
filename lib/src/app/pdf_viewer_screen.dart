@@ -30,11 +30,20 @@ class PdfViewerScreen extends ConsumerStatefulWidget {
   final Future<PdfManualMarkdownData> Function(String docId)?
   getPdfManualMarkdownOverride;
 
+  /// Optional test seam for deterministic note-load isolation tests.
+  final Future<List<PdfNote>> Function(String docId, int pageIndex)?
+  getPdfNotesOverride;
+
+  /// Optional test seam for reader subtree build-count assertions.
+  final VoidCallback? onReaderBuild;
+
   const PdfViewerScreen({
     super.key,
     required this.doc,
     this.getPdfMarkdownOverride,
     this.getPdfManualMarkdownOverride,
+    this.getPdfNotesOverride,
+    this.onReaderBuild,
   });
 
   @override
@@ -49,19 +58,12 @@ class _PdfViewerScreenState extends ConsumerState<PdfViewerScreen> {
   late int _totalPages;
   PdfManualMarkdownData? _manual;
 
-  // F17: PDF notes for the current page.
-  List<PdfNote> _pageNotes = [];
-  String? _selectedText;
-  String? _selectedContext;
-  int? _selectionStart;
-  int? _selectionEnd;
-
-  // Lookup candidate derived from the raw selection. Used only for the
-  // `Look up` button so long-press over-selection can be recovered
-  // without disturbing the raw selection (which feeds `Add Note`).
-  String? _lookupText;
-  int? _lookupStart;
-  int? _lookupEnd;
+  // F17: note and selection UI update independently from the reader subtree.
+  final ValueNotifier<List<PdfNote>> _pageNotes = ValueNotifier<List<PdfNote>>(
+    const <PdfNote>[],
+  );
+  final ValueNotifier<_PdfReaderActionState?> _actionState =
+      ValueNotifier<_PdfReaderActionState?>(null);
 
   // Per-page content sections (split by <!-- page: N --> markers).
   List<String> _pageSections = [];
@@ -86,7 +88,15 @@ class _PdfViewerScreenState extends ConsumerState<PdfViewerScreen> {
   void dispose() {
     _saveDebounce?.cancel();
     _saveLastReadPageImmediate();
+    _pageNotes.dispose();
+    _actionState.dispose();
     super.dispose();
+  }
+
+  void _clearActionState() {
+    if (_actionState.value != null) {
+      _actionState.value = null;
+    }
   }
 
   Future<void> _loadMarkdown() async {
@@ -205,6 +215,7 @@ class _PdfViewerScreenState extends ConsumerState<PdfViewerScreen> {
     try {
       final fresh = await storage.getPdfManualMarkdown(docId: widget.doc.id);
       if (!mounted) return;
+      _clearActionState();
       setState(() {
         _manual = fresh;
       });
@@ -252,15 +263,16 @@ class _PdfViewerScreenState extends ConsumerState<PdfViewerScreen> {
   // F17: PDF notes helpers ----------------------------------------------
 
   Future<void> _loadPdfNotes() async {
+    final pageIndex = _currentPage;
     try {
-      final notes = await storage.getPdfNotes(
-        docId: widget.doc.id,
-        pageIndex: _currentPage,
-      );
-      if (!mounted) return;
-      setState(() {
-        _pageNotes = notes;
-      });
+      final notes = widget.getPdfNotesOverride != null
+          ? await widget.getPdfNotesOverride!(widget.doc.id, pageIndex)
+          : await storage.getPdfNotes(
+              docId: widget.doc.id,
+              pageIndex: pageIndex,
+            );
+      if (!mounted || pageIndex != _currentPage) return;
+      _pageNotes.value = List<PdfNote>.unmodifiable(notes);
     } catch (_) {
       // Silent: notes are best-effort; reader still works.
     }
@@ -268,13 +280,14 @@ class _PdfViewerScreenState extends ConsumerState<PdfViewerScreen> {
 
   Future<void> _openNoteEditorForCurrent({PdfNote? existing}) async {
     final now = DateTime.now().toUtc().toIso8601String();
+    final action = _actionState.value;
     final draft = await Navigator.of(context).push<NoteDraft>(
       MaterialPageRoute(
         builder: (ctx) => NoteEditorScreen(
           title: existing != null ? 'Edit Note' : 'Add Note',
-          selectedText: existing?.selectedText ?? _selectedText,
-          startOffset: existing == null ? _selectionStart : null,
-          endOffset: existing == null ? _selectionEnd : null,
+          selectedText: existing?.selectedText ?? action?.selectedText,
+          startOffset: existing == null ? action?.selectionStart : null,
+          endOffset: existing == null ? action?.selectionEnd : null,
           initialContent: existing?.content,
           initialTags: existing?.tags ?? const [],
         ),
@@ -287,7 +300,8 @@ class _PdfViewerScreenState extends ConsumerState<PdfViewerScreen> {
             docId: widget.doc.id,
             pageIndex: _currentPage,
             selectedText: draft.selectedText,
-            selectedSentence: (_selectedContext ?? draft.selectedText).trim(),
+            selectedSentence: (action?.canonicalContext ?? draft.selectedText)
+                .trim(),
             content: draft.content,
             tags: draft.tags,
             createdAt: now,
@@ -307,15 +321,7 @@ class _PdfViewerScreenState extends ConsumerState<PdfViewerScreen> {
     try {
       await storage.savePdfNote(note: note);
       if (!mounted) return;
-      setState(() {
-        _selectedText = null;
-        _selectedContext = null;
-        _selectionStart = null;
-        _selectionEnd = null;
-        _lookupText = null;
-        _lookupStart = null;
-        _lookupEnd = null;
-      });
+      _clearActionState();
       await _loadPdfNotes();
     } catch (e) {
       if (!mounted) return;
@@ -363,17 +369,18 @@ class _PdfViewerScreenState extends ConsumerState<PdfViewerScreen> {
   }
 
   Future<void> _onPdfLookUpPressed() async {
-    final lookupText = _lookupText;
-    if (lookupText == null || lookupText.isEmpty) return;
+    final action = _actionState.value;
+    final lookupText = action?.lookupText;
+    if (action == null || lookupText == null || lookupText.isEmpty) return;
     final acknowledged = await showVocabDisclosureIfNeeded(context, ref);
     if (!acknowledged || !mounted) return;
 
     final lookup = performLookup(
       ref: ref,
       selectedText: lookupText,
-      pageContext: _selectedContext ?? _currentPageContent,
-      startOffset: _lookupStart,
-      endOffset: _lookupEnd,
+      pageContext: action.canonicalContext,
+      startOffset: action.lookupStart,
+      endOffset: action.lookupEnd,
       source: VocabSource.pdf(docId: widget.doc.id, pageIndex: _currentPage),
     );
 
@@ -396,35 +403,13 @@ class _PdfViewerScreenState extends ConsumerState<PdfViewerScreen> {
         },
       ),
     );
-    setState(() {
-      _selectedText = null;
-      _selectedContext = null;
-      _selectionStart = null;
-      _selectionEnd = null;
-      _lookupText = null;
-      _lookupStart = null;
-      _lookupEnd = null;
-    });
+    _clearActionState();
     await lookup;
   }
 
   void _handleReaderSelection(ReaderSelection? event) {
     if (event == null) {
-      if (_selectedText != null ||
-          _selectedContext != null ||
-          _selectionStart != null ||
-          _selectionEnd != null ||
-          _lookupText != null) {
-        setState(() {
-          _selectedText = null;
-          _selectedContext = null;
-          _selectionStart = null;
-          _selectionEnd = null;
-          _lookupText = null;
-          _lookupStart = null;
-          _lookupEnd = null;
-        });
-      }
+      _clearActionState();
       return;
     }
     final contextText = event.canonicalContext;
@@ -436,15 +421,18 @@ class _PdfViewerScreenState extends ConsumerState<PdfViewerScreen> {
       selection: TextSelection(baseOffset: start, extentOffset: end),
       cause: event.cause,
     );
-    setState(() {
-      _selectedText = contextText.substring(start, end).trim();
-      _selectedContext = contextText;
-      _selectionStart = start;
-      _selectionEnd = end;
-      _lookupText = candidate?.text;
-      _lookupStart = candidate?.start;
-      _lookupEnd = candidate?.end;
-    });
+    final next = _PdfReaderActionState(
+      selectedText: contextText.substring(start, end).trim(),
+      canonicalContext: contextText,
+      selectionStart: start,
+      selectionEnd: end,
+      lookupText: candidate?.text,
+      lookupStart: candidate?.start,
+      lookupEnd: candidate?.end,
+    );
+    if (_actionState.value != next) {
+      _actionState.value = next;
+    }
   }
 
   Future<void> _saveLastReadPageImmediate() async {
@@ -469,16 +457,10 @@ class _PdfViewerScreenState extends ConsumerState<PdfViewerScreen> {
   }
 
   void _jumpToPage(int pageIndex) {
+    _pageNotes.value = const <PdfNote>[];
+    _clearActionState();
     setState(() {
       _currentPage = pageIndex.clamp(0, _totalPages - 1);
-      _pageNotes = [];
-      _selectedText = null;
-      _selectedContext = null;
-      _selectionStart = null;
-      _selectionEnd = null;
-      _lookupText = null;
-      _lookupStart = null;
-      _lookupEnd = null;
     });
     _scheduleLastReadPageSave();
     _loadPdfNotes();
@@ -615,7 +597,17 @@ class _PdfViewerScreenState extends ConsumerState<PdfViewerScreen> {
     final appearance = ref.watch(readingAppearanceProvider);
     return Column(
       children: [
-        _buildNoteChipRow(appearance),
+        ValueListenableBuilder<List<PdfNote>>(
+          valueListenable: _pageNotes,
+          builder: (context, notes, child) {
+            return ValueListenableBuilder<_PdfReaderActionState?>(
+              valueListenable: _actionState,
+              builder: (context, action, child) {
+                return _buildNoteChipRow(appearance, notes, action);
+              },
+            );
+          },
+        ),
         Expanded(
           child: Stack(
             children: [
@@ -626,16 +618,24 @@ class _PdfViewerScreenState extends ConsumerState<PdfViewerScreen> {
                     markdown: _currentPageContent,
                     appearance: appearance,
                     onSelectionChanged: _handleReaderSelection,
+                    onBuild: widget.onReaderBuild,
                   ),
                 ),
               ),
-              if (_selectedText != null && _selectedText!.isNotEmpty)
-                Positioned(
-                  left: 0,
-                  right: 0,
-                  top: 0,
-                  child: _buildSelectedStrip(appearance),
+              Positioned(
+                left: 0,
+                right: 0,
+                top: 0,
+                child: ValueListenableBuilder<_PdfReaderActionState?>(
+                  valueListenable: _actionState,
+                  builder: (context, action, child) {
+                    if (action == null || action.selectedText.isEmpty) {
+                      return const SizedBox.shrink();
+                    }
+                    return _buildSelectedStrip(appearance, action);
+                  },
                 ),
+              ),
             ],
           ),
         ),
@@ -643,8 +643,12 @@ class _PdfViewerScreenState extends ConsumerState<PdfViewerScreen> {
     );
   }
 
-  Widget _buildNoteChipRow(ReadingAppearance appearance) {
-    if (_pageNotes.isEmpty) {
+  Widget _buildNoteChipRow(
+    ReadingAppearance appearance,
+    List<PdfNote> notes,
+    _PdfReaderActionState? action,
+  ) {
+    if (notes.isEmpty) {
       return SizedBox(
         height: 48,
         child: Align(
@@ -654,7 +658,7 @@ class _PdfViewerScreenState extends ConsumerState<PdfViewerScreen> {
             child: ActionChip(
               avatar: const Icon(Icons.add, size: 16),
               label: const Text('Add note'),
-              onPressed: _selectedText == null || _selectedText!.isEmpty
+              onPressed: action == null || action.selectedText.isEmpty
                   ? () => _openNoteEditorForCurrent()
                   : null,
             ),
@@ -673,7 +677,7 @@ class _PdfViewerScreenState extends ConsumerState<PdfViewerScreen> {
         spacing: 6,
         runSpacing: 4,
         children: [
-          ..._pageNotes.map(
+          ...notes.map(
             (n) => InputChip(
               label: Text(
                 n.content.isEmpty ? '(empty)' : n.content.split('\n').first,
@@ -687,7 +691,7 @@ class _PdfViewerScreenState extends ConsumerState<PdfViewerScreen> {
           ActionChip(
             avatar: const Icon(Icons.add, size: 16),
             label: const Text('Add note'),
-            onPressed: _selectedText == null || _selectedText!.isEmpty
+            onPressed: action == null || action.selectedText.isEmpty
                 ? () => _openNoteEditorForCurrent()
                 : null,
           ),
@@ -696,7 +700,10 @@ class _PdfViewerScreenState extends ConsumerState<PdfViewerScreen> {
     );
   }
 
-  Widget _buildSelectedStrip(ReadingAppearance appearance) {
+  Widget _buildSelectedStrip(
+    ReadingAppearance appearance,
+    _PdfReaderActionState action,
+  ) {
     return Material(
       color: Color.alphaBlend(
         appearance.palette.accent.withValues(alpha: 0.16),
@@ -706,7 +713,7 @@ class _PdfViewerScreenState extends ConsumerState<PdfViewerScreen> {
         dense: true,
         leading: const Icon(Icons.sticky_note_2, color: Color(0xFFFFA000)),
         title: Text(
-          _selectedText!,
+          action.selectedText,
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
         ),
@@ -714,7 +721,8 @@ class _PdfViewerScreenState extends ConsumerState<PdfViewerScreen> {
           mainAxisSize: MainAxisSize.min,
           children: [
             OutlinedButton.icon(
-              onPressed: (_lookupText != null && _lookupText!.isNotEmpty)
+              onPressed:
+                  action.lookupText != null && action.lookupText!.isNotEmpty
                   ? _onPdfLookUpPressed
                   : null,
               icon: const Icon(Icons.menu_book_outlined, size: 16),
@@ -844,6 +852,49 @@ class _PdfViewerScreenState extends ConsumerState<PdfViewerScreen> {
       ),
     );
   }
+}
+
+class _PdfReaderActionState {
+  const _PdfReaderActionState({
+    required this.selectedText,
+    required this.canonicalContext,
+    required this.selectionStart,
+    required this.selectionEnd,
+    required this.lookupText,
+    required this.lookupStart,
+    required this.lookupEnd,
+  });
+
+  final String selectedText;
+  final String canonicalContext;
+  final int selectionStart;
+  final int selectionEnd;
+  final String? lookupText;
+  final int? lookupStart;
+  final int? lookupEnd;
+
+  @override
+  bool operator ==(Object other) {
+    return other is _PdfReaderActionState &&
+        other.selectedText == selectedText &&
+        other.canonicalContext == canonicalContext &&
+        other.selectionStart == selectionStart &&
+        other.selectionEnd == selectionEnd &&
+        other.lookupText == lookupText &&
+        other.lookupStart == lookupStart &&
+        other.lookupEnd == lookupEnd;
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    selectedText,
+    canonicalContext,
+    selectionStart,
+    selectionEnd,
+    lookupText,
+    lookupStart,
+    lookupEnd,
+  );
 }
 
 /// Table of contents entry parsed from markdown headings.

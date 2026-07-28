@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -187,6 +189,118 @@ void main() {
       expect(find.byType(BrrkReaderPage), findsOneWidget);
       expect(find.byType(MarkdownBody), findsOneWidget);
       expect(find.byType(AcademicSelectableText), findsNothing);
+    });
+
+    testWidgets('fallback PDF selection enables Look up and Add Note', (
+      tester,
+    ) async {
+      var readerBuilds = 0;
+      const ocrMarkdown =
+          '<!-- page: 1 -->\n'
+          'This is *philosophical* text with a '
+          '[reference](https://example.com).';
+      await tester.pumpWidget(
+        ProviderScope(
+          child: MaterialApp(
+            home: PdfViewerScreen(
+              doc: doc,
+              getPdfMarkdownOverride: (_) async => ocrMarkdown,
+              getPdfManualMarkdownOverride: (_) async =>
+                  PdfManualMarkdownData(version: 1, pages: const {}),
+              onReaderBuild: () => readerBuilds++,
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.byType(BrrkReaderPage), findsOneWidget);
+      expect(find.byType(MarkdownBody), findsOneWidget);
+      final initialReaderBuilds = readerBuilds;
+      final selectable = tester.widget<SelectableText>(
+        find.descendant(
+          of: find.byType(MarkdownBody),
+          matching: find.byType(SelectableText),
+        ),
+      );
+      final renderedText = selectable.textSpan!.toPlainText(
+        includeSemanticsLabels: false,
+      );
+      final start = renderedText.indexOf('philosophical');
+      selectable.onSelectionChanged!(
+        TextSelection(
+          baseOffset: start,
+          extentOffset: start + 'philosophical'.length,
+        ),
+        SelectionChangedCause.longPress,
+      );
+      await tester.pump();
+
+      expect(readerBuilds, initialReaderBuilds);
+      expect(find.text('philosophical'), findsOneWidget);
+      final lookUp = tester.widget<OutlinedButton>(
+        find.widgetWithText(OutlinedButton, 'Look up'),
+      );
+      expect(lookUp.onPressed, isNotNull);
+      final addNote = tester.widget<FilledButton>(
+        find.widgetWithText(FilledButton, 'Add Note'),
+      );
+      expect(addNote.onPressed, isNotNull);
+
+      selectable.onSelectionChanged!(
+        const TextSelection.collapsed(offset: 0),
+        SelectionChangedCause.tap,
+      );
+      await tester.pump();
+
+      expect(readerBuilds, initialReaderBuilds);
+      expect(find.text('philosophical'), findsNothing);
+      expect(find.widgetWithText(OutlinedButton, 'Look up'), findsNothing);
+      expect(find.widgetWithText(FilledButton, 'Add Note'), findsNothing);
+    });
+
+    testWidgets('note load completion does not rebuild the reader', (
+      tester,
+    ) async {
+      final notes = Completer<List<PdfNote>>();
+      var readerBuilds = 0;
+      const ocrMarkdown = '<!-- page: 1 -->\nPlain PDF text.';
+      await tester.pumpWidget(
+        ProviderScope(
+          child: MaterialApp(
+            home: PdfViewerScreen(
+              doc: doc,
+              getPdfMarkdownOverride: (_) async => ocrMarkdown,
+              getPdfManualMarkdownOverride: (_) async =>
+                  PdfManualMarkdownData(version: 1, pages: const {}),
+              getPdfNotesOverride: (_, _) => notes.future,
+              onReaderBuild: () => readerBuilds++,
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.byType(BrrkReaderPage), findsOneWidget);
+      final initialReaderBuilds = readerBuilds;
+      final now = DateTime.now().toUtc().toIso8601String();
+      notes.complete([
+        PdfNote(
+          id: 'note-1',
+          docId: doc.id,
+          pageIndex: 0,
+          selectedText: 'Plain',
+          selectedSentence: 'Plain PDF text.',
+          content: 'Loaded note',
+          tags: const [],
+          createdAt: now,
+          updatedAt: now,
+        ),
+      ]);
+      await tester.pumpAndSettle();
+
+      expect(find.text('Loaded note'), findsOneWidget);
+      expect(readerBuilds, initialReaderBuilds);
     });
 
     testWidgets('TOC button remains available for PDF headings', (

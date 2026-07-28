@@ -7,6 +7,17 @@ import 'hyphenation/hyphenated_text.dart';
 import 'hyphenation/reader_text_layout_spec.dart';
 import 'reader_selection.dart';
 
+/// Text-dependent paragraph preparation cached by the paragraph widget.
+class ReaderParagraphPreparation {
+  const ReaderParagraphPreparation({
+    required this.mapping,
+    required this.overlayEnabled,
+  });
+
+  final HyphenatedText mapping;
+  final bool overlayEnabled;
+}
+
 /// Render output for one paragraph widget.
 class ReaderParagraphRender {
   const ReaderParagraphRender({
@@ -70,24 +81,48 @@ class ReaderParagraphLayout {
 
   final EmergencyWordBreaker breaker;
 
-  ReaderParagraphRender render({
+  ReaderParagraphPreparation prepare({
     required String canonicalText,
-    required ReadingAppearance appearance,
+    required ReaderLayoutMode layoutMode,
   }) {
-    final isAcademic = appearance.layoutMode == ReaderLayoutMode.academic;
+    final isAcademic = layoutMode == ReaderLayoutMode.academic;
     final mapping = isAcademic
         ? breaker.breakText(canonicalText)
         : HyphenatedText.fromInsertionOffsets(
             canonicalText,
             insertBeforeSourceBoundary: const <int>[],
           );
+    return ReaderParagraphPreparation(
+      mapping: mapping,
+      overlayEnabled: isAcademic && mapping.sourceText != mapping.displayText,
+    );
+  }
+
+  ReaderParagraphRender present({
+    required ReaderParagraphPreparation preparation,
+    required ReadingAppearance appearance,
+  }) {
+    final mapping = preparation.mapping;
     return ReaderParagraphRender(
       sourceText: mapping.sourceText,
       displayText: mapping.displayText,
       mapping: mapping,
-      overlayEnabled: isAcademic && mapping.sourceText != mapping.displayText,
+      overlayEnabled: preparation.overlayEnabled,
       textAlign: appearance.bodyTextAlign,
       style: appearance.bodyStyle,
+    );
+  }
+
+  ReaderParagraphRender render({
+    required String canonicalText,
+    required ReadingAppearance appearance,
+  }) {
+    return present(
+      preparation: prepare(
+        canonicalText: canonicalText,
+        layoutMode: appearance.layoutMode,
+      ),
+      appearance: appearance,
     );
   }
 }
@@ -100,7 +135,7 @@ class ReaderParagraphLayout {
 /// hanging-hyphen overlay. Source-aware: when [sourceStart] is provided,
 /// emitted [ReaderSelection] carries exact page-source code-unit offsets
 /// that callers can convert to UTF-8 byte offsets before persisting.
-class BrrkReaderParagraph extends StatelessWidget {
+class BrrkReaderParagraph extends StatefulWidget {
   const BrrkReaderParagraph({
     super.key,
     required this.text,
@@ -121,21 +156,52 @@ class BrrkReaderParagraph extends StatelessWidget {
   final ReaderParagraphLayout layout;
 
   @override
+  State<BrrkReaderParagraph> createState() => _BrrkReaderParagraphState();
+}
+
+class _BrrkReaderParagraphState extends State<BrrkReaderParagraph> {
+  late ReaderParagraphPreparation _preparation;
+
+  ReaderParagraphPreparation _prepare() => widget.layout.prepare(
+    canonicalText: widget.text,
+    layoutMode: widget.appearance.layoutMode,
+  );
+
+  @override
+  void initState() {
+    super.initState();
+    _preparation = _prepare();
+  }
+
+  @override
+  void didUpdateWidget(covariant BrrkReaderParagraph oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.text != widget.text ||
+        oldWidget.appearance.layoutMode != widget.appearance.layoutMode ||
+        oldWidget.layout != widget.layout) {
+      _preparation = _prepare();
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final render = layout.render(canonicalText: text, appearance: appearance);
+    final render = widget.layout.present(
+      preparation: _preparation,
+      appearance: widget.appearance,
+    );
 
     void handleSelection(
       TextSelection selection,
       SelectionChangedCause? cause,
     ) {
       if (!selection.isValid || selection.isCollapsed) {
-        onSelectionChanged(null);
+        widget.onSelectionChanged(null);
         return;
       }
       final start = selection.start.clamp(0, render.displayText.length);
       final end = selection.end.clamp(0, render.displayText.length);
       if (end <= start) {
-        onSelectionChanged(null);
+        widget.onSelectionChanged(null);
         return;
       }
       final canonicalSelection = render.canonicalSelection(
@@ -149,11 +215,13 @@ class BrrkReaderParagraph extends StatelessWidget {
         0,
         render.sourceText.length,
       );
-      final pageStart = sourceStart == null
+      final pageStart = widget.sourceStart == null
           ? null
-          : sourceStart! + canonicalStart;
-      final pageEnd = sourceStart == null ? null : sourceStart! + canonicalEnd;
-      onSelectionChanged(
+          : widget.sourceStart! + canonicalStart;
+      final pageEnd = widget.sourceStart == null
+          ? null
+          : widget.sourceStart! + canonicalEnd;
+      widget.onSelectionChanged(
         ReaderSelection(
           canonicalContext: render.sourceText,
           selection: TextSelection(

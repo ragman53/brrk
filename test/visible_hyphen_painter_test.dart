@@ -349,37 +349,65 @@ void main() {
   });
 
   group('REVIEW.md §11.3 — engine compute count via fake engine', () {
-    testWidgets('widget computes layout once and reuses it on rebuild',
+    testWidgets('recomputes only when effective layout inputs change',
         (tester) async {
+      addTearDown(() => tester.binding.setSurfaceSize(null));
       var computeCount = 0;
       final countingEngine = _CountingEngine(() => computeCount++);
-      await tester.pumpWidget(
-        MaterialApp(
-          home: Scaffold(
-            body: AcademicSelectableText(
-              spec: spec(),
-              sourceText: 'philosophical',
-              layoutEngine: countingEngine,
-              onSelectionChanged: (_, _) {},
+
+      Widget subject(ReaderTextLayoutSpec layoutSpec) => MaterialApp(
+            home: Scaffold(
+              body: AcademicSelectableText(
+                spec: layoutSpec,
+                sourceText: layoutSpec.displayText.replaceAll('\u00AD', ''),
+                layoutEngine: countingEngine,
+                onSelectionChanged: (_, _) {},
+              ),
             ),
-          ),
-        ),
-      );
-      // First pump triggers initial build.
+          );
+
+      await tester.pumpWidget(subject(spec()));
       expect(computeCount, 1);
 
-      // Pump several frames (simulates scroll/animations). Layout
-      // inputs are unchanged, so the cache must not invalidate.
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 16));
       await tester.pump(const Duration(milliseconds: 16));
       expect(computeCount, 1);
 
-      // Change layout width (simulate container resize): the cache
-      // must invalidate exactly once.
+      final selectable = tester.widget<SelectableText>(
+        find.byKey(const Key('academic-selectable-text')),
+      );
+      selectable.onSelectionChanged!(
+        const TextSelection(baseOffset: 0, extentOffset: 5),
+        SelectionChangedCause.longPress,
+      );
+      await tester.pump();
+      expect(computeCount, 1, reason: 'selection does not change layout');
+
       await tester.binding.setSurfaceSize(const Size(500, 800));
       await tester.pump();
       expect(computeCount, 2);
+
+      await tester.pumpWidget(
+        subject(
+          spec().copyWith(
+            resolvedTextStyle: const TextStyle(fontSize: 24),
+          ),
+        ),
+      );
+      expect(computeCount, 3, reason: 'font metrics changed');
+
+      await tester.pumpWidget(
+        subject(
+          spec().copyWith(
+            resolvedTextStyle: const TextStyle(fontSize: 24, height: 1.8),
+          ),
+        ),
+      );
+      expect(computeCount, 4, reason: 'line height changed');
+
+      await tester.pumpWidget(subject(spec(displayText: 'investigation')));
+      expect(computeCount, 5, reason: 'display text changed');
     });
   });
 }

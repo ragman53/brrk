@@ -129,6 +129,44 @@ void main() {
     });
   });
 
+  group('ReadingAppearanceNotifier font persistence', () {
+    test(
+      'previews multiple values and persists only the final value',
+      () async {
+        final notifier = ReadingAppearanceNotifier();
+        addTearDown(notifier.dispose);
+        await Future<void>.delayed(Duration.zero);
+
+        notifier.previewFontSize(18);
+        notifier.previewFontSize(19);
+        notifier.previewFontSize(20);
+
+        final prefs = await SharedPreferences.getInstance();
+        expect(notifier.state.fontSize, 20);
+        expect(prefs.getDouble('reading_font_size'), isNull);
+
+        await notifier.persistFontSize(20);
+        expect(prefs.getDouble('reading_font_size'), 20);
+      },
+    );
+
+    test('reload restores the final persisted font size', () async {
+      final notifier = ReadingAppearanceNotifier();
+      addTearDown(notifier.dispose);
+      await Future<void>.delayed(Duration.zero);
+      notifier.previewFontSize(23);
+      await notifier.persistFontSize(23);
+
+      final reloaded = ReadingAppearanceNotifier();
+      addTearDown(reloaded.dispose);
+      for (var i = 0; i < 10 && reloaded.state.fontSize != 23; i++) {
+        await Future<void>.delayed(Duration.zero);
+      }
+
+      expect(reloaded.state.fontSize, 23);
+    });
+  });
+
   group('ReadingPalette.materialScheme', () {
     test('default palette brightness is light', () {
       final scheme = ReadingPalette.defaultPalette.materialScheme;

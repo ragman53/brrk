@@ -1,5 +1,6 @@
 import 'package:brrk/src/app/reader/brrk_reader_page.dart';
 import 'package:brrk/src/app/reader/hyphenation/academic_selectable_text.dart';
+import 'package:brrk/src/app/reader/reader_markdown_plan.dart';
 import 'package:brrk/src/app/reader/reader_paragraph_layout.dart';
 import 'package:brrk/src/app/reader/reader_selection.dart';
 import 'package:brrk/src/app/reading_appearance.dart';
@@ -32,6 +33,63 @@ void main() {
       expect(find.text('# Heading'), findsNothing);
       expect(find.byType(BrrkReaderParagraph), findsOneWidget);
       expect(find.byType(MarkdownBody), findsNothing);
+    });
+
+    testWidgets('caches its plan until markdown or override changes', (
+      tester,
+    ) async {
+      var plannerCalls = 0;
+      ReaderMarkdownPlan planner(String markdown) {
+        plannerCalls++;
+        return planReaderMarkdown(markdown);
+      }
+
+      Widget page(
+        String markdown,
+        ReadingAppearance appearance, {
+        ReaderMarkdownPlan? override,
+      }) {
+        return wrap(
+          BrrkReaderPage(
+            markdown: markdown,
+            appearance: appearance,
+            planOverride: override,
+            planner: planner,
+            onSelectionChanged: (_) {},
+          ),
+        );
+      }
+
+      await tester.pumpWidget(page('Plain text.', natural));
+      expect(plannerCalls, 1);
+
+      await tester.pumpWidget(
+        page(
+          'Plain text.',
+          const ReadingAppearance(
+            fontSize: 24,
+            density: ReadingDensity.spacious,
+            palette: ReadingPalette.nord,
+          ),
+        ),
+      );
+      expect(plannerCalls, 1, reason: 'appearance is not a planner input');
+
+      await tester.pumpWidget(page('Changed text.', natural));
+      expect(plannerCalls, 2);
+
+      await tester.pumpWidget(
+        page(
+          'Changed text.',
+          natural,
+          override: const LegacyMarkdownPlan('test override'),
+        ),
+      );
+      expect(plannerCalls, 2, reason: 'an override bypasses the planner');
+      expect(find.byType(MarkdownBody), findsOneWidget);
+
+      await tester.pumpWidget(page('Changed text.', natural));
+      expect(plannerCalls, 3, reason: 'removing the override resolves once');
     });
 
     testWidgets('unsupported markdown uses shared flutter_markdown fallback', (
@@ -138,31 +196,54 @@ void main() {
       },
     );
 
-    testWidgets('fallback selection leaves source offsets null', (
+    testWidgets('fallback rich selection emits rendered context', (
       tester,
     ) async {
+      const renderedText = 'This is philosophical text with a reference.';
       ReaderSelection? captured;
       await tester.pumpWidget(
         wrap(
           BrrkReaderPage(
-            markdown: 'This has *emphasis*.',
+            markdown:
+                'This is *philosophical* text with a '
+                '[reference](https://example.com).',
             appearance: natural,
             onSelectionChanged: (event) => captured = event,
           ),
         ),
       );
 
-      final markdown = tester.widget<MarkdownBody>(find.byType(MarkdownBody));
-      markdown.onSelectionChanged!(
-        'This has emphasis.',
-        const TextSelection(baseOffset: 0, extentOffset: 4),
-        SelectionChangedCause.tap,
+      expect(find.byType(MarkdownBody), findsOneWidget);
+      final selectable = tester.widget<SelectableText>(
+        find.descendant(
+          of: find.byType(MarkdownBody),
+          matching: find.byType(SelectableText),
+        ),
+      );
+      final start = renderedText.indexOf('philosophical');
+      selectable.onSelectionChanged!(
+        TextSelection(
+          baseOffset: start,
+          extentOffset: start + 'philosophical'.length,
+        ),
+        SelectionChangedCause.longPress,
       );
 
       expect(captured, isNotNull);
+      expect(captured!.canonicalContext, renderedText);
+      expect(captured!.canonicalContext, isNot(contains('*')));
+      expect(
+        captured!.canonicalContext,
+        isNot(contains('https://example.com')),
+      );
+      expect(captured!.canonicalContext, isNot(contains('\u00AD')));
+      expect(
+        captured!.selection.textInside(captured!.canonicalContext),
+        'philosophical',
+      );
       expect(captured!.sourceStart, isNull);
       expect(captured!.sourceEnd, isNull);
-      expect(captured!.canonicalContext.contains('\u00AD'), isFalse);
+      expect(captured!.cause, SelectionChangedCause.longPress);
     });
 
     testWidgets('cleared selection emits null', (tester) async {

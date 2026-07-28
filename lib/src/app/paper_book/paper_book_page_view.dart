@@ -26,6 +26,9 @@ class PaperBookPageView extends StatefulWidget {
   })
   onLookUp;
 
+  @visibleForTesting
+  final VoidCallback? onReaderBuild;
+
   const PaperBookPageView({
     super.key,
     required this.page,
@@ -35,6 +38,7 @@ class PaperBookPageView extends StatefulWidget {
     required this.onEditNote,
     required this.onDeleteNote,
     required this.onLookUp,
+    this.onReaderBuild,
   });
 
   @override
@@ -42,17 +46,9 @@ class PaperBookPageView extends StatefulWidget {
 }
 
 class _PaperBookPageViewState extends State<PaperBookPageView> {
-  String? _selectedText;
-  String? _selectedCanonical;
-  int? _selectionStart;
-  int? _selectionEnd;
-
-  // Lookup candidate derived from the raw selection. Used only for the
-  // `Look up` button so long-press over-selection can be recovered
-  // without disturbing the raw selection (which feeds `Add Note`).
-  String? _lookupText;
-  int? _lookupStart;
-  int? _lookupEnd;
+  final ValueNotifier<_PaperReaderActionState?> _actionState =
+      ValueNotifier<_PaperReaderActionState?>(null);
+  late Widget _reader;
 
   String get _displayedText =>
       widget.page.manualMarkdown != null &&
@@ -60,107 +56,128 @@ class _PaperBookPageViewState extends State<PaperBookPageView> {
       ? widget.page.manualMarkdown!
       : widget.page.markdown;
 
+  Widget _buildReader() => BrrkReaderPage(
+    markdown: _displayedText,
+    appearance: widget.readingAppearance,
+    onSelectionChanged: _handleReaderSelection,
+    onBuild: widget.onReaderBuild,
+  );
+
+  bool _appearanceChanged(PaperBookPageView oldWidget) {
+    final old = oldWidget.readingAppearance;
+    final current = widget.readingAppearance;
+    return old.fontSize != current.fontSize ||
+        old.density != current.density ||
+        old.palette != current.palette ||
+        old.layoutMode != current.layoutMode;
+  }
+
+  String _displayedTextFor(PaperBookPageView value) =>
+      value.page.manualMarkdown != null &&
+          value.page.manualMarkdown!.trim().isNotEmpty
+      ? value.page.manualMarkdown!
+      : value.page.markdown;
+
+  void _clearActionState() {
+    if (_actionState.value != null) {
+      _actionState.value = null;
+    }
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _reader = _buildReader();
+  }
+
   @override
   void didUpdateWidget(covariant PaperBookPageView oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.page.id != widget.page.id) {
-      _selectedText = null;
-      _selectedCanonical = null;
-      _selectionStart = null;
-      _selectionEnd = null;
-      _lookupText = null;
-      _lookupStart = null;
-      _lookupEnd = null;
+    final textChanged = _displayedTextFor(oldWidget) != _displayedText;
+    if (oldWidget.page.id != widget.page.id || textChanged) {
+      _clearActionState();
     }
+    if (oldWidget.page.id != widget.page.id ||
+        textChanged ||
+        _appearanceChanged(oldWidget) ||
+        oldWidget.onReaderBuild != widget.onReaderBuild) {
+      _reader = _buildReader();
+    }
+  }
+
+  @override
+  void dispose() {
+    _actionState.dispose();
+    super.dispose();
   }
 
   void _handleReaderSelection(ReaderSelection? event) {
     if (event == null) {
-      setState(() {
-        _selectedText = null;
-        _selectedCanonical = null;
-        _selectionStart = null;
-        _selectionEnd = null;
-        _lookupText = null;
-        _lookupStart = null;
-        _lookupEnd = null;
-      });
+      _clearActionState();
       return;
     }
     final contextText = event.canonicalContext;
     final start = event.selection.start.clamp(0, contextText.length);
     final end = event.selection.end.clamp(0, contextText.length);
     if (end <= start) return;
-    final selected = contextText.substring(start, end);
     final candidate = vocabularyCandidateFromSelection(
       context: contextText,
       selection: TextSelection(baseOffset: start, extentOffset: end),
       cause: event.cause,
     );
-    // FEAT-SPEC §11.1: Paper note offsets are stored as UTF-8 byte offsets
-    // (rust/src/api/models.rs:245-250). Convert exact native page-source
-    // code-unit offsets now; fall back to null when exactness is not proven.
+    // FEAT-SPEC §11.1: Paper note offsets are stored as UTF-8 byte offsets.
     final pageSource = _displayedText;
-    final noteStart = event.sourceStart == null
-        ? null
-        : utf8ByteOffsetForCodeUnitOffset(pageSource, event.sourceStart);
-    final noteEnd = event.sourceEnd == null
-        ? null
-        : utf8ByteOffsetForCodeUnitOffset(pageSource, event.sourceEnd);
-    setState(() {
-      _selectionStart = noteStart;
-      _selectionEnd = noteEnd;
-      _selectedText = selected.trim();
-      _selectedCanonical = contextText;
-      _lookupText = candidate?.text;
-      _lookupStart = candidate?.start;
-      _lookupEnd = candidate?.end;
-    });
+    final next = _PaperReaderActionState(
+      selectedText: contextText.substring(start, end).trim(),
+      canonicalContext: contextText,
+      noteStart: event.sourceStart == null
+          ? null
+          : utf8ByteOffsetForCodeUnitOffset(pageSource, event.sourceStart),
+      noteEnd: event.sourceEnd == null
+          ? null
+          : utf8ByteOffsetForCodeUnitOffset(pageSource, event.sourceEnd),
+      lookupText: candidate?.text,
+      lookupStart: candidate?.start,
+      lookupEnd: candidate?.end,
+    );
+    if (_actionState.value != next) {
+      _actionState.value = next;
+    }
   }
 
   Future<void> _addSelectedNote() async {
+    final action = _actionState.value;
+    if (action == null) return;
     await widget.onAddNote(
-      selectedText: _selectedText,
-      startOffset: _selectionStart,
-      endOffset: _selectionEnd,
+      selectedText: action.selectedText,
+      startOffset: action.noteStart,
+      endOffset: action.noteEnd,
     );
     if (!mounted) return;
-    setState(() {
-      _selectedText = null;
-      _selectedCanonical = null;
-      _selectionStart = null;
-      _selectionEnd = null;
-      _lookupText = null;
-      _lookupStart = null;
-      _lookupEnd = null;
-    });
+    _clearActionState();
   }
 
   Future<void> _onLookUpPressed() async {
-    final lookupText = _lookupText;
-    if (lookupText == null || lookupText.isEmpty) return;
+    final action = _actionState.value;
+    final lookupText = action?.lookupText;
+    if (action == null || lookupText == null || lookupText.isEmpty) return;
     // Always pass the canonical (no-marker) page context to vocabulary
     // lookup. Display text containing U+00AD must never reach Rust or the
     // Mistral Chat request.
     final started = await widget.onLookUp(
       selectedText: lookupText,
-      pageContext: _selectedCanonical ?? _displayedText,
-      startOffset: _lookupStart,
-      endOffset: _lookupEnd,
+      pageContext: action.canonicalContext,
+      startOffset: action.lookupStart,
+      endOffset: action.lookupEnd,
     );
     if (!mounted || !started) return;
-    setState(() {
-      _selectedText = null;
-      _selectedCanonical = null;
-      _selectionStart = null;
-      _selectionEnd = null;
-      _lookupText = null;
-      _lookupStart = null;
-      _lookupEnd = null;
-    });
+    _clearActionState();
   }
 
-  Widget _buildSelectedStrip(ReadingAppearance appearance) {
+  Widget _buildSelectedStrip(
+    ReadingAppearance appearance,
+    _PaperReaderActionState action,
+  ) {
     return Material(
       color: Color.alphaBlend(
         appearance.palette.accent.withValues(alpha: 0.16),
@@ -170,7 +187,7 @@ class _PaperBookPageViewState extends State<PaperBookPageView> {
         dense: true,
         leading: const Icon(Icons.sticky_note_2, color: Color(0xFFFFA000)),
         title: Text(
-          _selectedText!,
+          action.selectedText,
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
         ),
@@ -178,7 +195,8 @@ class _PaperBookPageViewState extends State<PaperBookPageView> {
           mainAxisSize: MainAxisSize.min,
           children: [
             OutlinedButton.icon(
-              onPressed: (_lookupText != null && _lookupText!.isNotEmpty)
+              onPressed:
+                  action.lookupText != null && action.lookupText!.isNotEmpty
                   ? _onLookUpPressed
                   : null,
               icon: const Icon(Icons.menu_book_outlined, size: 16),
@@ -244,24 +262,70 @@ class _PaperBookPageViewState extends State<PaperBookPageView> {
               Positioned.fill(
                 child: Container(
                   color: appearance.palette.background,
-                  child: BrrkReaderPage(
-                    markdown: _displayedText,
-                    appearance: appearance,
-                    onSelectionChanged: _handleReaderSelection,
-                  ),
+                  child: _reader,
                 ),
               ),
-              if (_selectedText != null && _selectedText!.isNotEmpty)
-                Positioned(
-                  left: 0,
-                  right: 0,
-                  top: 0,
-                  child: _buildSelectedStrip(appearance),
+              Positioned(
+                left: 0,
+                right: 0,
+                top: 0,
+                child: ValueListenableBuilder<_PaperReaderActionState?>(
+                  valueListenable: _actionState,
+                  builder: (context, action, child) {
+                    if (action == null || action.selectedText.isEmpty) {
+                      return const SizedBox.shrink();
+                    }
+                    return _buildSelectedStrip(appearance, action);
+                  },
                 ),
+              ),
             ],
           ),
         ),
       ],
     );
   }
+}
+
+class _PaperReaderActionState {
+  const _PaperReaderActionState({
+    required this.selectedText,
+    required this.canonicalContext,
+    required this.noteStart,
+    required this.noteEnd,
+    required this.lookupText,
+    required this.lookupStart,
+    required this.lookupEnd,
+  });
+
+  final String selectedText;
+  final String canonicalContext;
+  final int? noteStart;
+  final int? noteEnd;
+  final String? lookupText;
+  final int? lookupStart;
+  final int? lookupEnd;
+
+  @override
+  bool operator ==(Object other) {
+    return other is _PaperReaderActionState &&
+        other.selectedText == selectedText &&
+        other.canonicalContext == canonicalContext &&
+        other.noteStart == noteStart &&
+        other.noteEnd == noteEnd &&
+        other.lookupText == lookupText &&
+        other.lookupStart == lookupStart &&
+        other.lookupEnd == lookupEnd;
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    selectedText,
+    canonicalContext,
+    noteStart,
+    noteEnd,
+    lookupText,
+    lookupStart,
+    lookupEnd,
+  );
 }

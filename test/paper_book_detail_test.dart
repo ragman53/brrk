@@ -2,9 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:brrk/src/app/paper_book/paper_book_page_view.dart';
 import 'package:brrk/src/app/paper_book_detail_screen.dart';
 import 'package:brrk/src/app/reader/brrk_reader_page.dart';
 import 'package:brrk/src/app/reader/hyphenation/academic_selectable_text.dart';
+import 'package:brrk/src/app/reading_appearance.dart';
 import 'package:brrk/src/rust/api/models.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 
@@ -370,6 +372,71 @@ void main() {
       );
       await tester.pumpAndSettle();
       expect(find.byIcon(Icons.edit), findsOneWidget);
+    });
+
+    testWidgets('selection and note updates do not rebuild the reader', (
+      tester,
+    ) async {
+      var readerBuilds = 0;
+      void onReaderBuild() => readerBuilds++;
+      final page = PaperPage(
+        id: 'page-1',
+        imagePath: 'images/book-1/page-1.jpg',
+        ocrHash: 'sha256:abc',
+        markdown: 'A philosophical investigation.',
+        notes: const [],
+      );
+
+      Widget view(List<Note> notes) => MaterialApp(
+        home: Scaffold(
+          body: PaperBookPageView(
+            page: page,
+            notes: notes,
+            readingAppearance: const ReadingAppearance(),
+            onAddNote: ({selectedText, startOffset, endOffset}) async {},
+            onEditNote: (_) {},
+            onDeleteNote: (_) {},
+            onLookUp:
+                ({
+                  required selectedText,
+                  required pageContext,
+                  required startOffset,
+                  required endOffset,
+                }) async => true,
+            onReaderBuild: onReaderBuild,
+          ),
+        ),
+      );
+
+      await tester.pumpWidget(view(const []));
+      final initialReaderBuilds = readerBuilds;
+      final selectable = tester.widget<SelectableText>(
+        find.byType(SelectableText),
+      );
+      selectable.onSelectionChanged!(
+        const TextSelection(baseOffset: 2, extentOffset: 15),
+        SelectionChangedCause.longPress,
+      );
+      await tester.pump();
+
+      expect(find.text('philosophical'), findsOneWidget);
+      expect(readerBuilds, initialReaderBuilds);
+
+      final note = Note(
+        id: 'note-1',
+        pageId: page.id,
+        selectedText: 'philosophical',
+        startOffset: 2,
+        endOffset: 15,
+        content: 'Loaded note',
+        tags: const [],
+        createdAt: nowGen,
+        updatedAt: nowGen,
+      );
+      await tester.pumpWidget(view([note]));
+
+      expect(find.text('Loaded note'), findsOneWidget);
+      expect(readerBuilds, initialReaderBuilds);
     });
 
     // Regression: editing a page label must not erase the manual Markdown.
