@@ -1,0 +1,2 @@
+7df149970168b2f411695f1868da62771b25e2e4b141af506c5904ac8aff8bc3  release-artifacts/brrk-0.1.0+3-play-release.aab
+d2345c846c7f83f41824ca27e29838d0359c6f9331e0807d2019d25c5f13f63c  release-artifacts/brrk-0.1.0+3-release.apk
